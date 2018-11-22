@@ -1,6 +1,6 @@
 #!/bin/bash
 
-directories="deployments src openshift tests"
+directories="src/"
 
 # checks for the whole directories
 for directory in $directories
