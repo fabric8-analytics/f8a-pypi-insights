@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-directories=""
+directories="src/"
 pass=0
 fail=0
 
