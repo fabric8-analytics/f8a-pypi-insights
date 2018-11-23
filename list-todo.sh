@@ -1,6 +1,6 @@
 #!/bin/bash
 
-directories="src/"
+directories="src tests"
 
 # checks for the whole directories
 for directory in $directories

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-directories="src/"
+directories="src tests"
 pass=0
 fail=0
 
