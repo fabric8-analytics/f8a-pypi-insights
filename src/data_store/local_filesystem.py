@@ -56,5 +56,6 @@ class LocalFileSystem(AbstractDataStore):
             return json.load(json_fileobj)
 
     def read_pickle_file(self, filename):
+        """Read pickle file from local filesystem."""
         with open(os.path.join(self.src_dir, filename), 'rb') as pickle_file:
             return pickle.load(pickle_file)

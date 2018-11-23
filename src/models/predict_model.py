@@ -36,6 +36,11 @@ class HPFScoring:
     """This class contains logic for scoring the trained HPF model."""
 
     def __init__(self, num_recommendations, data_store):
+        """Initialize HPFScoring instance.
+
+        :param num_recommendations: number of recommendations to fetch from the model
+        :param data_store: instance of s3_data_store or local_filesystem
+        """
         self.m = num_recommendations
         self.s3_client = data_store
         self.recommender = self._load_model()
@@ -62,8 +67,8 @@ class HPFScoring:
     def _get_closest_manifest_file(self, input_stack):
         """Get closest manifest file.
 
-        :param input_stack: Input stack of the user.
-        :return manifest_id, exact_match.
+        :param input_stack: Input stack of the user
+        :return manifest_id, exact_match
         """
         manifest_id = self.manifest_to_id_map.get(input_stack)
         exact_match = True
@@ -81,8 +86,8 @@ class HPFScoring:
     def _map_input_to_package_ids(self, input_stack):
         """Map user input to package ids.
 
-        :param input_stack: User's input stack.
-        :return: package_id_list, missing_packages.
+        :param input_stack: User's input stack
+        :return: package_id_list, missing_packages
         """
         package_id_list = list()
         missing_packages = list()
@@ -109,7 +114,11 @@ class HPFScoring:
         return package_list
 
     def predict(self, input_stack):
-        """Main logic for prediction."""
+        """Predict companion packages for user stack
+
+        :param input_stack: user stack
+        :return: companion_packages, missing_packages
+        """
         user_id, exact_match = self._get_closest_manifest_file(input_stack)
         package_id_list, missing_packages = self._map_input_to_package_ids(input_stack)
         companion_packages = list()

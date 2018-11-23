@@ -73,6 +73,7 @@ class S3DataStore(AbstractDataStore):
         return utf_data
 
     def read_pickle_file(self, filename):
+        """Read pickle file from s3."""
         return pickle.loads(self.read_generic_file(filename), encoding='utf-8')
 
     def upload_file(self, src, target):
