@@ -1,4 +1,4 @@
-FROM pypi-insights:testing
+FROM quay.io/openshiftio/fabric8-analytics-f8a-pypi-insights:pypi-tests
 
 LABEL MAINTAINER="Aagam Shah <aagam@redhat.com>"
 

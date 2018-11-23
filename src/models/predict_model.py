@@ -114,7 +114,7 @@ class HPFScoring:
         return package_list
 
     def predict(self, input_stack):
-        """Predict companion packages for user stack
+        """Predict companion packages for user stack.
 
         :param input_stack: user stack
         :return: companion_packages, missing_packages
