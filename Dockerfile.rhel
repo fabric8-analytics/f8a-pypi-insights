@@ -1,0 +1,15 @@
+# base image source https://github.com/rhdt/EL-Dockerfiles/blob/master/base/python3/Dockerfile
+
+FROM quay.io/openshiftio/rhel-base-python3:latest
+
+LABEL maintainer="Aagam Shah <aagam@redhat.com>"
+
+COPY ./src /src
+COPY ./requirements.txt /requirements.txt
+COPY ./entrypoint.sh /bin/entrypoint.sh
+
+RUN chmod 0777 /bin/entrypoint.sh
+
+RUN pip3 install -r requirements.txt
+
+ENTRYPOINT ["/bin/entrypoint.sh"]
