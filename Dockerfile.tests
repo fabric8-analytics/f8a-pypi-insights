@@ -1,4 +1,4 @@
-FROM quay.io/openshiftio/fabric8-analytics-f8a-pypi-insights:pypi-tests
+FROM quay.io/openshiftio/fabric8-analytics-f8a-pypi-insights:latest
 
 LABEL MAINTAINER="Aagam Shah <aagam@redhat.com>"
 
