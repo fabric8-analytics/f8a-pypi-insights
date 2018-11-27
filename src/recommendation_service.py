@@ -17,6 +17,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+import os
 import logging
 
 import daiquiri
@@ -43,7 +44,7 @@ else:
 
 recommender = HPFScoring(num_recommendations=10, data_store=s3_client)
 
-daiquiri.setup(level=logging.INFO)
+daiquiri.setup(level=os.environ.get('FLASK_LOGGING_LEVEL', logging.INFO))
 _logger = daiquiri.getLogger(__name__)
 
 
