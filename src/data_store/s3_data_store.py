@@ -74,7 +74,9 @@ class S3DataStore(AbstractDataStore):
 
     def read_pickle_file(self, filename):
         """Read pickle file from s3."""
-        return pickle.loads(self.read_generic_file(filename), encoding='utf-8')
+        return pickle.loads(
+            self.s3_resource.Object(self.bucket_name, filename).get()['Body'].read()
+        )
 
     def upload_file(self, src, target):
         """Upload file into notebooks store."""

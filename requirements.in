@@ -3,3 +3,5 @@ flask
 daiquiri
 gevent
 gunicorn
+boto3
+botocore
