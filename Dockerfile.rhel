@@ -12,4 +12,7 @@ RUN chmod 0777 /bin/entrypoint.sh
 
 RUN pip3 install -r requirements.txt
 
+# Don't put this in requirements.txt. It will start failing.
+RUN pip3 install Cython==0.29.1 && pip3 install hpfrec==0.2.2.9
+
 ENTRYPOINT ["/bin/entrypoint.sh"]
