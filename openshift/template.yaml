@@ -92,25 +92,25 @@ parameters:
   displayName: CPU request
   required: true
   name: CPU_REQUEST
-  value: "300m"
+  value: "1000m"
 
 - description: CPU limit
   displayName: CPU limit
   required: true
   name: CPU_LIMIT
-  value: "300m"
+  value: "1000m"
 
 - description: Memory request
   displayName: Memory request
   required: true
   name: MEMORY_REQUEST
-  value: "1Gi"
+  value: "512Mi"
 
 - description: Memory limit
   displayName: Memory limit
   required: true
   name: MEMORY_LIMIT
-  value: "1Gi"
+  value: "512Mi"
 
 - description: Docker registry where the image is
   displayName: Docker registry
