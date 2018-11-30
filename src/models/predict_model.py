@@ -24,9 +24,14 @@ import sys
 
 import daiquiri
 import pandas as pd
+import numpy as np
 
 from src.config.path_constants import (HPF_MODEL_PATH, PACKAGE_TO_ID_MAP,
                                        ID_TO_PACKAGE_MAP, MANIFEST_TO_ID_MAP)
+
+from src.config.cloud_constants import MIN_CONFIDENCE_SCORE
+
+from operator import itemgetter
 
 daiquiri.setup(level=logging.INFO)
 _logger = daiquiri.getLogger(__name__)
@@ -70,9 +75,9 @@ class HPFScoring:
         :param input_stack: Input stack of the user
         :return manifest_id, exact_match
         """
-        manifest_id = self.manifest_to_id_map.get(input_stack)
+        manifest_id = self.manifest_to_id_map.get(input_stack, -1)
         exact_match = True
-        if not manifest_id:
+        if manifest_id == -1:
             exact_match = False
             min_diff = sys.maxsize
             for idx, manifest in enumerate(self.manifest_to_id_map.keys()):
@@ -92,11 +97,11 @@ class HPFScoring:
         package_id_list = list()
         missing_packages = list()
         for package in input_stack:
-            package_id = self.package_to_id_map.get(package)
-            if package_id:
-                package_id_list.append(package_id)
-            else:
+            package_id = self.package_to_id_map.get(package, -1)
+            if package_id == -1:
                 missing_packages.append(package)
+            else:
+                package_id_list.append(package_id)
 
         return package_id_list, missing_packages
 
@@ -113,6 +118,10 @@ class HPFScoring:
             package_list.append(package)
         return package_list
 
+    @staticmethod
+    def _sigmoid(array):
+        return 1 / (1 + np.exp(-array))
+
     def predict(self, input_stack):
         """Predict companion packages for user stack.
 
@@ -125,7 +134,7 @@ class HPFScoring:
         if len(package_id_list) < len(missing_packages):
             _logger.info("Number of unknown packages more than known")
             return companion_packages, missing_packages
-        if not (exact_match or user_id):
+        if user_id == -1:
             _logger.info("Adding a new user....")
 
             try:
@@ -133,13 +142,15 @@ class HPFScoring:
                     'ItemId': package_id_list,
                     'Count': [1] * len(package_id_list)
                 })
+                user_id = self.recommender.nusers
                 is_user_added = self.recommender.add_user(
-                    user_id=self.recommender.nusers + 1,
+                    user_id=user_id,
                     counts_df=counts_df
                 )
+                user_id -= 1
                 if is_user_added:
                     recommendations = self.recommender.topN(
-                        user=self.recommender.nusers - 1,
+                        user=user_id,
                         n=self.m
                     )
                 else:
@@ -159,18 +170,37 @@ class HPFScoring:
                 n=self.m
             )
 
-        package_set = set(self._get_packages_from_id(recommendations))
-
+        package_id_set = set(package_id_list)
         # Remove packages that were already seen by user.
         # TODO: Filter packages based on feedback as well.
         # TODO: Remove transitive dependencies as well.
-        filtered_packages = package_set - input_stack
+        recommendations = set(recommendations) - package_id_set
 
-        # TODO: Calculate co-occurrence probability here.
-        for package in filtered_packages:
-            companion_packages.append({
-                "package_name": package,
-                "topic_list": []
-            })
+        poisson_values = self.recommender.predict(
+            user=[user_id] * len(recommendations),
+            item=list(recommendations)
+        )
+
+        # This is copy pasted on as is basis from maven and NPM model.
+        # It's not the right way of calculating probability by any means.
+        # There is a more lengthier way to calculate probabilities using
+        # logistic regression which remains to be implemented
+        # (but that's also not completely correct).
+        # For discussion please follow: https://github.com/david-cortes/hpfrec/issues/4
+        normalized_poisson_values = HPFScoring._sigmoid(
+            (poisson_values - poisson_values.mean()) / poisson_values.std()) * 100
+
+        filtered_packages = self._get_packages_from_id(recommendations)
+
+        for idx, package in enumerate(filtered_packages):
+            if normalized_poisson_values[idx] >= MIN_CONFIDENCE_SCORE:
+                companion_packages.append({
+                    "package_name": package,
+                    "cooccurrence_probability": str(normalized_poisson_values[idx]),
+                    "topic_list": []
+                })
+
+        companion_packages = sorted(companion_packages, key=itemgetter('cooccurrence_probability'),
+                                    reverse=True)
 
         return companion_packages, missing_packages

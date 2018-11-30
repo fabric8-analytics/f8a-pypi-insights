@@ -35,6 +35,8 @@ objects:
             value: "6006"
           - name: SERVICE_TIMEOUT
             value: "900"
+          - name: MIN_CONFIDENCE_SCORE
+            value: "30"
           - name: AWS_S3_ACCESS_KEY_ID
             valueFrom:
               secretKeyRef:
