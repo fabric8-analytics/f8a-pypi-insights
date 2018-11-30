@@ -31,8 +31,6 @@ from src.config.path_constants import (HPF_MODEL_PATH, PACKAGE_TO_ID_MAP,
 
 from src.config.cloud_constants import MIN_CONFIDENCE_SCORE
 
-from operator import itemgetter
-
 daiquiri.setup(level=logging.INFO)
 _logger = daiquiri.getLogger(__name__)
 
@@ -170,15 +168,14 @@ class HPFScoring:
                 n=self.m
             )
 
-        package_id_set = set(package_id_list)
         # Remove packages that were already seen by user.
         # TODO: Filter packages based on feedback as well.
         # TODO: Remove transitive dependencies as well.
-        recommendations = set(recommendations) - package_id_set
+        recommendations = np.delete(recommendations, package_id_list)
 
         poisson_values = self.recommender.predict(
-            user=[user_id] * len(recommendations),
-            item=list(recommendations)
+            user=[user_id] * recommendations.size,
+            item=recommendations
         )
 
         # This is copy pasted on as is basis from maven and NPM model.
@@ -199,8 +196,5 @@ class HPFScoring:
                     "cooccurrence_probability": str(normalized_poisson_values[idx]),
                     "topic_list": []
                 })
-
-        companion_packages = sorted(companion_packages, key=itemgetter('cooccurrence_probability'),
-                                    reverse=True)
 
         return companion_packages, missing_packages
