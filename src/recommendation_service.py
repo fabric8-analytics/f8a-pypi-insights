@@ -66,6 +66,8 @@ def recommendation():
     global recommender
     response_json = []
     for recommendation_request in request.json:
+        _logger.info("Input package list is......")
+        _logger.info(recommendation_request)
         companions, missing = recommender.predict(
             input_stack=frozenset(recommendation_request['package_list'])
         )
@@ -74,6 +76,8 @@ def recommendation():
             "companion_packages": companions,
             "ecosystem": ECOSYSTEM
         })
+        _logger.info("Sending response.....")
+        _logger.info(response_json)
     return flask.jsonify(response_json), 200
 
 
