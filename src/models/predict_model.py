@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
 import sys
+import itertools
 
 import daiquiri
 import pandas as pd
@@ -171,7 +172,16 @@ class HPFScoring:
         # Remove packages that were already seen by user.
         # TODO: Filter packages based on feedback as well.
         # TODO: Remove transitive dependencies as well.
-        recommendations = np.delete(recommendations, package_id_list)
+        package_id_set = set(package_id_list)
+
+        _logger.info("Input package id set: " + str(package_id_set))
+        _logger.info("Recommendations ids are: " + str(recommendations))
+
+        # Find some better way to do this
+        recommendations = np.array(list(itertools.compress(recommendations,
+                                        [i not in package_id_set for i in recommendations])))
+
+        _logger.info("Filtered recommendation ids are: " + str(recommendations))
 
         poisson_values = self.recommender.predict(
             user=[user_id] * recommendations.size,
