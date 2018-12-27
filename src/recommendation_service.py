@@ -64,13 +64,17 @@ def readiness():
 def recommendation():
     """Endpoint to serve recommendations."""
     global recommender
+    limit = 5
     response_json = []
     for recommendation_request in request.json:
-        _logger.info("Input package list is......")
-        _logger.info(recommendation_request)
+        _logger.info("Input direct+transitive package list is......")
+        input_packages = recommendation_request.get('package_list', []) +\
+            recommendation_request.get("transitive_stack", [])
+        _logger.info(input_packages)
         companions, missing = recommender.predict(
             input_stack=frozenset(recommendation_request['package_list'])
         )
+        companions = [d for d in companions if d['package_name'] not in input_packages][:limit]
         response_json.append({
             "missing_packages": missing,
             "companion_packages": companions,
