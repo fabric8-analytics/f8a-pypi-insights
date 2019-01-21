@@ -51,6 +51,8 @@ objects:
             value: ${FLASK_LOGGING_LEVEL}
           - name: S3_BUCKET_NAME
             value: ${S3_BUCKET_NAME}
+          - name: MODEL_VERSION
+            value: ${MODEL_VERSION}
           name: f8a-pypi-insights
           image: "${DOCKER_REGISTRY}/${DOCKER_IMAGE}:${IMAGE_TAG}"
           ports:
@@ -149,3 +151,9 @@ parameters:
   required: true
   name: S3_BUCKET_NAME
   value: "hpf-insights"
+
+- description: "Model Version - Date Format YYYY-MM-DD"
+  displayName: Model Version
+  required: true
+  name: MODEL_VERSION
+  value: "2019-01-03"
