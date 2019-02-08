@@ -6,6 +6,7 @@ RUN yum install -y epel-release &&\
     yum install -y gcc-c++ git python34-pip python34-requests httpd httpd-devel python34-devel &&\
     yum clean all
 COPY ./requirements.txt /requirements.txt
+RUN pip3 install git+https://github.com/fabric8-analytics/fabric8-analytics-rudra#egg=rudra
 RUN pip3 install -r requirements.txt
 RUN pip3 install Cython==0.29.1 && pip3 install hpfrec==0.2.2.9
 
