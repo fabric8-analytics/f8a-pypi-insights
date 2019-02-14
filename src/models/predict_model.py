@@ -178,7 +178,8 @@ class HPFScoring:
         _logger.info("Recommendations ids are: " + str(recommendations))
 
         # Find some better way to do this
-        recommendations = np.array(list(itertools.compress(recommendations,
+        recommendations = np.array(
+                list(itertools.compress(recommendations,
                                         [i not in package_id_set for i in recommendations])))
 
         _logger.info("Filtered recommendation ids are: " + str(recommendations))

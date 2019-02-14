@@ -4,24 +4,18 @@
 #
 #    pip-compile --output-file requirements.txt requirements.in
 #
-boto3==1.9.50
-botocore==1.12.50
 click==7.0                # via flask
 daiquiri==1.5.0
-docutils==0.14            # via botocore
 flask==1.0.2
 gevent==1.3.7
 greenlet==0.4.15          # via gevent
 gunicorn==19.9.0
 itsdangerous==1.1.0       # via flask
 jinja2==2.10              # via flask
-jmespath==0.9.3           # via boto3, botocore
 markupsafe==1.1.0         # via jinja2
 numpy==1.15.4             # via pandas
 pandas==0.23.4
-python-dateutil==2.7.5    # via botocore, pandas
+python-dateutil==2.7.5    # via pandas
 pytz==2018.7              # via pandas
-s3transfer==0.1.13        # via boto3
 six==1.11.0               # via python-dateutil
-urllib3==1.24.1           # via botocore
 werkzeug==0.14.1          # via flask

@@ -26,21 +26,22 @@ from flask import Flask, request
 
 import src.config.cloud_constants as cloud_constants
 from src.config.path_constants import ECOSYSTEM
-from src.data_store.s3_data_store import S3DataStore
+from rudra.data_store.aws import AmazonS3
 from src.models.predict_model import HPFScoring
 
 app = Flask(__name__)
 
 if cloud_constants.USE_CLOUD_SERVICES:
-    s3_client = S3DataStore(src_bucket_name=cloud_constants.S3_BUCKET_NAME,
-                            access_key=cloud_constants.AWS_S3_ACCESS_KEY_ID,
-                            secret_key=cloud_constants.AWS_S3_SECRET_KEY_ID)
+    s3_client = AmazonS3(bucket_name=cloud_constants.S3_BUCKET_NAME,
+                         aws_access_key_id=cloud_constants.AWS_S3_ACCESS_KEY_ID,
+                         aws_secret_access_key=cloud_constants.AWS_S3_SECRET_KEY_ID)
+    s3_client.connect()
 
 else:
-    from src.data_store.local_filesystem import LocalFileSystem
+    from rudra.data_store.local_data_store import LocalDataStore
 
     # Change the source directory here for local file system testing.
-    s3_client = LocalFileSystem(src_dir='/Users/aagamshah/Documents/RedHat/')
+    s3_client = LocalDataStore('tests/test_data')
 
 recommender = HPFScoring(num_recommendations=10, data_store=s3_client)
 
