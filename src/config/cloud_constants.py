@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import os
 import numpy as np
 
-USE_CLOUD_SERVICES = os.environ.get('USE_CLOUD_SERVICES', True)
+USE_CLOUD_SERVICES = os.environ.get('USE_CLOUD_SERVICES', 'true') == 'true'
 AWS_S3_ACCESS_KEY_ID = os.environ.get('AWS_S3_ACCESS_KEY_ID', '')
 AWS_S3_SECRET_KEY_ID = os.environ.get('AWS_S3_SECRET_ACCESS_KEY', '')
 DEPLOYMENT_PREFIX = os.environ.get('DEPLOYMENT_PREFIX', 'dev')
