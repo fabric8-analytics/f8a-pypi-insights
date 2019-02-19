@@ -6,6 +6,7 @@ LABEL MAINTAINER="Aagam Shah <aagam@redhat.com>"
 # copy testing source code and scripts into root dir /
 # --------------------------------------------------------------------------------------------------
 ADD ./tests/ /tests
+ADD ./.git/ /.git
 ADD ./tests/scripts/entrypoint-test.sh /entrypoint-test.sh
 RUN chmod 0777 /entrypoint-test.sh
 
