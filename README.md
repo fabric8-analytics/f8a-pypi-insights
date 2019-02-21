@@ -68,6 +68,6 @@ Please see [the following link](https://github.com/koalaman/shellcheck) for furt
 
 Code coverage is reported via the codecov.io. The results can be seen on the following address:
 
-[code coverage report](https://codecov.io/gh/fabric8-analytics/fabric8-analytics-nvd-toolkit)
+[code coverage report](https://codecov.io/gh/fabric8-analytics/f8a-pypi-insights)
 
 This repository contains the code powering the Golang(Openshift/Kubernetes) insights engine of developer AI platform. WIP.
