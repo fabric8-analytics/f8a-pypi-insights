@@ -57,13 +57,17 @@ class TestRecommendationService:
     def test_liveness(self, api_client):
         """Test liveness endpoint."""
         resp = api_client.get('/api/v1/liveness')
+        assert resp is not None
         assert resp.status_code == 200
+        assert resp.json is not None
         assert resp.json == {}
 
     def test_readiness(self, api_client):
         """Test Readiness endpoint."""
         resp = api_client.get('/api/v1/readiness')
+        assert resp is not None
         assert resp.status_code == 200
+        assert resp.json is not None
         assert resp.json["status"] == "ready"
 
     def test_companion_recommendation_with_known_stack(self, api_client):
@@ -73,7 +77,9 @@ class TestRecommendationService:
         resp = api_client.post('/api/v1/companion_recommendation',
                                data=json.dumps(payload),
                                headers=headers)
+        assert resp is not None
         assert resp.status_code == 200
+        assert resp.json is not None
         assert len(resp.json) > 0
         for pkgs in resp.json:
             assert not pkgs['missing_packages']
@@ -91,7 +97,9 @@ class TestRecommendationService:
         resp = api_client.post('/api/v1/companion_recommendation',
                                data=json.dumps(payload),
                                headers=headers)
+        assert resp is not None
         assert resp.status_code == 200
+        assert resp.json is not None
         assert len(resp.json) > 0
         for pkgs in resp.json:
             assert pkgs['ecosystem'] == 'pypi'
@@ -107,7 +115,9 @@ class TestRecommendationService:
         resp = api_client.post('/api/v1/companion_recommendation',
                                data=json.dumps(payload),
                                headers=headers)
+        assert resp is not None
         assert resp.status_code == 200
+        assert resp.json is not None
         assert len(resp.json) > 0
         for pkgs in resp.json:
             assert not pkgs['missing_packages']
