@@ -1,4 +1,23 @@
-"""Contains the path constants for S3 and local storage."""
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+This file contains the constants for interaction with path.
+
+Copyright © 2018 Red Hat Inc
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
 import os
 
 ECOSYSTEM = os.environ.get('HPF_SCORING_REGION', 'pypi')
@@ -12,3 +31,7 @@ MANIFEST_TO_ID_MAP = os.path.join(ECOSYSTEM, DEPLOYMENT_PREFIX, MODEL_VERSION,
                                   'trained-model/manifest-to-id.pickle')
 HPF_MODEL_PATH = os.path.join(ECOSYSTEM, DEPLOYMENT_PREFIX, MODEL_VERSION,
                               'intermediate-model/HPF_model.pkl')
+MANIFEST_PATH = os.path.join(ECOSYSTEM, DEPLOYMENT_PREFIX, MODEL_VERSION,
+                             'data/manifest.json')
+HYPERPARAMETERS_PATH = os.path.join(ECOSYSTEM, DEPLOYMENT_PREFIX, MODEL_VERSION,
+                                    'intermediate-model/hyperparameters.json')

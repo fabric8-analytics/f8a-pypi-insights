@@ -146,7 +146,6 @@ class HPFScoring:
                     user_id=user_id,
                     counts_df=counts_df
                 )
-                user_id -= 1
                 if is_user_added:
                     recommendations = self.recommender.topN(
                         user=user_id,
