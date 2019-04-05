@@ -22,22 +22,22 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from rudra.data_store.aws import AmazonS3
 from rudra.utils.helper import load_hyper_params
 from rudra.utils.validation import BQValidation
-from src.config.path_constants import (PACKAGE_TO_ID_MAP,
-    MANIFEST_TO_ID_MAP, MANIFEST_PATH, HPF_MODEL_PATH, ECOSYSTEM,
-    HYPERPARAMETERS_PATH, DEPLOYMENT_PREFIX, MODEL_VERSION)
-from src.config.cloud_constants import (S3_BUCKET_NAME,
-    AWS_S3_SECRET_KEY_ID, AWS_S3_ACCESS_KEY_ID, GITHUB_TOKEN)
 from fractions import Fraction
 import pandas as pd
 import numpy as np
 import hpfrec
 import json
-import daiquiri
 import logging
 import subprocess
+from src.config.path_constants import (PACKAGE_TO_ID_MAP,
+                                       MANIFEST_TO_ID_MAP, MANIFEST_PATH, HPF_MODEL_PATH, ECOSYSTEM,
+                                       HYPERPARAMETERS_PATH, DEPLOYMENT_PREFIX, MODEL_VERSION)
+from src.config.cloud_constants import (S3_BUCKET_NAME,
+                                        AWS_S3_SECRET_KEY_ID, AWS_S3_ACCESS_KEY_ID, GITHUB_TOKEN)
 
-daiquiri.setup(level=logging.INFO)
-_logger = daiquiri.getLogger(__name__)
+logging.basicConfig()
+_logger = logging.getLogger()
+_logger.setLevel(logging.INFO)
 
 bq_validator = BQValidation()
 
@@ -60,9 +60,9 @@ def load_data(s3_client):
     """Load data from s3 bucket."""
     if ((s3_client.object_exists(PACKAGE_TO_ID_MAP)) and
             (s3_client.object_exists(MANIFEST_TO_ID_MAP))):
-        package_id_dict_ = s3_client.read_json_file(PACKAGE_TO_ID_MAP)
-        manifest_id_dict_ = s3_client.read_pickle_file(MANIFEST_TO_ID_MAP)
-        return [package_id_dict_, manifest_id_dict_]
+        package_id_dict = s3_client.read_json_file(PACKAGE_TO_ID_MAP)
+        manifest_id_dict = s3_client.read_pickle_file(MANIFEST_TO_ID_MAP)
+        return [package_id_dict, manifest_id_dict]
     else:
         raw_data_dict = s3_client.read_json_file(MANIFEST_PATH)
         _logger.info("Size of Raw Manifest file is: {}".format(len(raw_data_dict)))
@@ -72,9 +72,8 @@ def load_data(s3_client):
 def make_user_item_df(manifest_dict, package_dict):
     """Make user item dataframe."""
     user_item_list = []
-    for k, v in manifest_dict.items():
-        user_id = int(k)
-        for package in v:
+    for manifest, user_id in manifest_dict.items():
+        for package in manifest:
             item_id = package_dict[package]
             user_item_list.append(
                 {
@@ -125,7 +124,8 @@ def generate_manifest_id_dict(manifest_list, package_id_dict):
 def run_recommender(train_df, latent_factor):
     """Start the recommender."""
     recommender = hpfrec.HPF(k=latent_factor, random_seed=123,
-                             ncores=-1)
+                             ncores=-1, stop_crit='train-llk', verbose=True,
+                             reindex=False, stop_thr=0.000001, maxiter=3000)
     recommender.step_size = None
     _logger.warning("Model is training, Don't interrupt.")
     recommender.fit(train_df)
@@ -174,7 +174,8 @@ def train_test_split(data_df):
     data_df = data_df.sample(frac=1)
     df_item = data_df.drop_duplicates(['ItemId'])
     train_df = pd.concat([df_user, df_item]).drop_duplicates()
-    fraction = round(Fraction(data_df, train_df), 2)
+    fraction = round(float(Fraction(len(data_df.index),
+                                    len(train_df.index))), 2)
 
     if fraction < 0.80:
         df_ = extra_df(fraction, data_df, train_df)
@@ -211,7 +212,7 @@ def recall_at_m(m, test_df, recommender, user_count):
         recommendations = recommender.topN(user=i, n=m, exclude_seen=True)
         intersection_length = np.intersect1d(x, recommendations).size
         try:
-            recall.append({"recall": intersection_length / rec_l, "length": rec_l, "user": i})
+            recall.append(intersection_length / rec_l)
         except ZeroDivisionError:
             pass
     return np.mean(recall)
@@ -226,8 +227,7 @@ def precision_at_m(m, test_df, recommender, user_count):
         r_size = recommendations.size
         intersection_length = np.intersect1d(x, recommendations).size
         try:
-            precision.append({"precision": intersection_length / r_size, "length": r_size,
-                              "user": i})
+            precision.append(intersection_length / r_size)
         except ZeroDivisionError:
             pass
     return np.mean(precision)
@@ -235,7 +235,7 @@ def precision_at_m(m, test_df, recommender, user_count):
 
 def precision_recall_at_m(m, test_df, recommender, user_item_df):
     """Precision and recall at given `m`."""
-    user_count = user_item_df.groupby("UserId").size
+    user_count = user_item_df['UserId'].nunique()
     try:
         precision = precision_at_m(m, test_df, recommender, user_count)
         recall = recall_at_m(m, test_df, recommender, user_count)
@@ -267,7 +267,7 @@ def save_dictionaries(s3_client, package_id_dict, manifest_id_dict):
         if not pkg_status or mnf_status:
             raise Exception("Unable to store data files for scoring")
 
-        _logger.info("Saved dictionaries successfully")
+        logging.info("Saved dictionaries successfully")
 
 
 def save_hyperparams(s3_client, content_json):
@@ -332,10 +332,10 @@ def create_git_pr(s3_client, model_version, recall_at_30):
             t.kill()
             _logger.error("ERROR - Script Timeout during PR creation")
             raise s
-        except subprocess.SubprocessError as e:
+        except subprocess.SubprocessError as s:
             _logger.error('ERROR - Some unknown error happened')
-            _logger.error('%r' % e)
-            raise e
+            _logger.error('%r' % s)
+            raise s
 
 
 def train_model():
@@ -343,9 +343,9 @@ def train_model():
     s3_obj = load_s3()
     data = load_data(s3_obj)
     hyper_params = load_hyper_params() or {}
-    lower_limit = int(hyper_params.get('lower_limit', 13))
-    upper_limit = int(hyper_params.get('upper_limit', 15))
-    latent_factor = int(hyper_params.get('latent_factor', 300))
+    lower_limit = int(hyper_params.get('lower_limit', 2))
+    upper_limit = int(hyper_params.get('upper_limit', 40))
+    latent_factor = int(hyper_params.get('latent_factor', 40))
     _logger.info("Lower limit {}, Upper limit {} and latent factor {} are used."
                  .format(lower_limit, upper_limit, latent_factor))
     package_id_dict, manifest_id_dict = preprocess_data(data, lower_limit, upper_limit)

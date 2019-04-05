@@ -58,7 +58,7 @@ class HPFScoring:
 
     def _load_package_to_id_map(self):
         """Load package to id map."""
-        return self.s3_client.read_json_file(PACKAGE_TO_ID_MAP)
+        return self.s3_client.read_json_file(PACKAGE_TO_ID_MAP).get('package_list')
 
     def _load_id_to_package_map(self):
         """Load id to package map."""
@@ -66,7 +66,7 @@ class HPFScoring:
 
     def _load_manifest_to_id_map(self):
         """Load manifest to id map."""
-        return self.s3_client.read_pickle_file(MANIFEST_TO_ID_MAP)
+        return self.s3_client.read_pickle_file(MANIFEST_TO_ID_MAP).get('manifest_list')
 
     def _get_closest_manifest_file(self, input_stack):
         """Get closest manifest file.
