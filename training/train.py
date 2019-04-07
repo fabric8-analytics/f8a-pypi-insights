@@ -174,8 +174,8 @@ def train_test_split(data_df):
     data_df = data_df.sample(frac=1)
     df_item = data_df.drop_duplicates(['ItemId'])
     train_df = pd.concat([df_user, df_item]).drop_duplicates()
-    fraction = round(float(Fraction(len(data_df.index),
-                                    len(train_df.index))), 2)
+    fraction = round(float(Fraction(len(train_df.index),
+                                    len(data_df.index))), 2)
 
     if fraction < 0.80:
         df_ = extra_df(fraction, data_df, train_df)
@@ -345,7 +345,7 @@ def train_model():
     hyper_params = load_hyper_params() or {}
     lower_limit = int(hyper_params.get('lower_limit', 2))
     upper_limit = int(hyper_params.get('upper_limit', 100))
-    latent_factor = int(hyper_params.get('latent_factor', 100))
+    latent_factor = int(hyper_params.get('latent_factor', 40))
     _logger.info("Lower limit {}, Upper limit {} and latent factor {} are used."
                  .format(lower_limit, upper_limit, latent_factor))
     package_id_dict, manifest_id_dict = preprocess_data(data, lower_limit, upper_limit)
