@@ -133,7 +133,7 @@ def run_recommender(train_df, latent_factor):
 
 
 def validate_manifest_data(manifest_list):
-    """Validates manifest packages with pypi."""
+    """Validate manifest packages with pypi."""
     for idx, manifest in enumerate(manifest_list):
         filtered_manifest = bq_validator.validate_pypi(manifest)
         # Even the filtered manifest is of length 0, we don't care about that here.
@@ -344,8 +344,8 @@ def train_model():
     data = load_data(s3_obj)
     hyper_params = load_hyper_params() or {}
     lower_limit = int(hyper_params.get('lower_limit', 2))
-    upper_limit = int(hyper_params.get('upper_limit', 40))
-    latent_factor = int(hyper_params.get('latent_factor', 40))
+    upper_limit = int(hyper_params.get('upper_limit', 100))
+    latent_factor = int(hyper_params.get('latent_factor', 100))
     _logger.info("Lower limit {}, Upper limit {} and latent factor {} are used."
                  .format(lower_limit, upper_limit, latent_factor))
     package_id_dict, manifest_id_dict = preprocess_data(data, lower_limit, upper_limit)
