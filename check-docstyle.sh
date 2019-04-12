@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-directories="src tests training"
+directories="src tests training tools"
 pass=0
 fail=0
 
