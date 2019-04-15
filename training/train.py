@@ -108,15 +108,14 @@ def format_dict(package_id_dict, manifest_id_dict):
     return format_pkg_id_dict, format_mnf_id_dict
 
 
-def generate_manifest_id_dict(manifest_list, package_id_dict):
+def generate_manifest_id_dict(manifest_list):
     """Generate manifest id dictionary."""
     count = 0
     manifest_id_dict = dict()
-    for manifest in manifest_list:
-        package_set = set()
-        for each_package in manifest:
-            package_set.add(package_id_dict[each_package])
-        manifest_id_dict[count] = list(package_set)
+    manifest_set = {frozenset(x) for x in manifest_list}
+    _logger.info("Number of unique manifests are: {}".format(len(manifest_set)))
+    for manifest in manifest_set:
+        manifest_id_dict[manifest] = count
         count += 1
     return manifest_id_dict
 
@@ -152,7 +151,7 @@ def preprocess_raw_data(raw_data_dict, lower_limit, upper_limit):
     _logger.info("Number of trimmed manifest = {}".format(
         len(trimmed_manifest_list)))
     package_id_dict = generate_package_id_dict(trimmed_manifest_list)
-    manifest_id_dict = generate_manifest_id_dict(trimmed_manifest_list, package_id_dict)
+    manifest_id_dict = generate_manifest_id_dict(trimmed_manifest_list)
     return package_id_dict, manifest_id_dict
 
 
