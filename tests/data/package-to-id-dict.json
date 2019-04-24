@@ -1,0 +1,8 @@
+{
+  "express": 1,
+  "npm": 2,
+  "serve-static": 0,
+  "redis": 3,
+  "color-choser": 4,
+  "angular": 5
+}

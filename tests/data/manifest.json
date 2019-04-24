@@ -1,0 +1,23 @@
+{
+  "ecosystem": "npm",
+  "package_dict": {
+    "user_input_stack": [
+      [
+        "serve-static",
+        "express"
+      ],
+      [
+        "express",
+        "npm",
+        "serve-static"
+      ]
+    ],
+    "bigquery_data": [
+      [
+        "redis",
+        "color-choser",
+        "angular"
+      ]
+    ]
+  }
+}

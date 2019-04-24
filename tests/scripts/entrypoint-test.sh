@@ -4,6 +4,7 @@
 COVERAGE_THRESHOLD=0
 
 locale charmap
+set -ex
 
 export RADONFILESENCODING=UTF-8
 

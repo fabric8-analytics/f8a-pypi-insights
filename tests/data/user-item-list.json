@@ -1,0 +1,50 @@
+[
+  {
+    "UserId": 0,
+    "ItemId": 0,
+    "Count": 1,
+    "is_user_input_stack": true
+  },
+  {
+    "UserId": 0,
+    "ItemId": 1,
+    "Count": 1,
+    "is_user_input_stack": true
+  },
+  {
+    "UserId": 1,
+    "ItemId": 1,
+    "Count": 1,
+    "is_user_input_stack": true
+  },
+  {
+    "UserId": 1,
+    "ItemId": 2,
+    "Count": 1,
+    "is_user_input_stack": true
+  },
+  {
+    "UserId": 1,
+    "ItemId": 0,
+    "Count": 1,
+    "is_user_input_stack": true
+  },
+  {
+    "UserId": 2,
+    "ItemId": 3,
+    "Count": 1,
+    "is_user_input_stack": false
+  },
+  {
+    "UserId": 2,
+    "ItemId": 4,
+    "Count": 1,
+    "is_user_input_stack": false
+  },
+  {
+    "UserId": 2,
+    "ItemId": 5,
+    "Count": 1,
+    "is_user_input_stack": false
+  }
+]
