@@ -42,7 +42,7 @@ _logger.setLevel(logging.INFO)
 bq_validator = BQValidation()
 
 
-def load_s3():
+def load_s3():  # pragma: no cover
     """Create connection s3."""
     s3_object = AmazonS3(bucket_name=S3_BUCKET_NAME,
                          aws_access_key_id=AWS_S3_ACCESS_KEY_ID,
@@ -56,30 +56,29 @@ def load_s3():
     raise Exception("S3 Connection Failed")
 
 
-def load_data(s3_client):
+def load_data(s3_client):  # pragma: no cover
     """Load data from s3 bucket."""
-    if ((s3_client.object_exists(PACKAGE_TO_ID_MAP)) and
-            (s3_client.object_exists(MANIFEST_TO_ID_MAP))):
-        package_id_dict = s3_client.read_json_file(PACKAGE_TO_ID_MAP)
-        manifest_id_dict = s3_client.read_pickle_file(MANIFEST_TO_ID_MAP)
-        return [package_id_dict, manifest_id_dict]
-    else:
-        raw_data_dict = s3_client.read_json_file(MANIFEST_PATH)
-        _logger.info("Size of Raw Manifest file is: {}".format(len(raw_data_dict)))
-        return [raw_data_dict]
+    raw_data_dict = s3_client.read_json_file(MANIFEST_PATH)
+    if raw_data_dict is None:
+        raise Exception("manifest.json not found")
+    _logger.info("Size of Raw Manifest file is: {}".format(len(raw_data_dict)))
+    return raw_data_dict
 
 
-def make_user_item_df(manifest_dict, package_dict):
+def make_user_item_df(manifest_dict, package_dict, user_input_stacks):
     """Make user item dataframe."""
     user_item_list = []
+    set_input_stacks = {frozenset(x) for x in user_input_stacks}
     for manifest, user_id in manifest_dict.items():
+        is_user_input_stack = manifest in set_input_stacks
         for package in manifest:
             item_id = package_dict[package]
             user_item_list.append(
                 {
                     "UserId": user_id,
                     "ItemId": item_id,
-                    "Count": 1
+                    "Count": 1,
+                    "is_user_input_stack": is_user_input_stack
                 }
             )
     return user_item_list
@@ -120,9 +119,9 @@ def generate_manifest_id_dict(manifest_list):
     return manifest_id_dict
 
 
-def run_recommender(train_df, latent_factor):
+def run_recommender(train_df, latent_factors):  # pragma: no cover
     """Start the recommender."""
-    recommender = hpfrec.HPF(k=latent_factor, random_seed=123,
+    recommender = hpfrec.HPF(k=latent_factors, random_seed=123,
                              ncores=-1, stop_crit='train-llk', verbose=True,
                              reindex=False, stop_thr=0.000001, maxiter=3000)
     recommender.step_size = None
@@ -131,7 +130,7 @@ def run_recommender(train_df, latent_factor):
     return recommender
 
 
-def validate_manifest_data(manifest_list):
+def validate_manifest_data(manifest_list):  # pragma: no cover
     """Validate manifest packages with pypi."""
     for idx, manifest in enumerate(manifest_list):
         filtered_manifest = bq_validator.validate_pypi(manifest)
@@ -141,7 +140,8 @@ def validate_manifest_data(manifest_list):
 
 def preprocess_raw_data(raw_data_dict, lower_limit, upper_limit):
     """Preprocess raw data."""
-    all_manifest_list = raw_data_dict.get('package_list', [])
+    all_manifest_list = raw_data_dict.get('user_input_stack', []) \
+        + raw_data_dict.get('bigquery_data', [])
     _logger.info("Number of manifests collected = {}".format(
         len(all_manifest_list)))
     validate_manifest_data(all_manifest_list)
@@ -168,37 +168,26 @@ def extra_df(frac, data_df, train_df):
 
 def train_test_split(data_df):
     """Split for training and testing."""
-    data_df = data_df.sample(frac=1)
-    df_user = data_df.drop_duplicates(['UserId'])
-    data_df = data_df.sample(frac=1)
-    df_item = data_df.drop_duplicates(['ItemId'])
+    user_input_df = data_df.loc[data_df['is_user_input_stack']]
+    user_input_df = user_input_df.sample(frac=1)
+    df_user = user_input_df.drop_duplicates(['UserId'])
+    user_input_df = user_input_df.sample(frac=1)
+    df_item = user_input_df.drop_duplicates(['ItemId'])
     train_df = pd.concat([df_user, df_item]).drop_duplicates()
     fraction = round(float(Fraction(len(train_df.index),
-                                    len(data_df.index))), 2)
+                                    len(user_input_df.index))), 2)
 
     if fraction < 0.80:
-        df_ = extra_df(fraction, data_df, train_df)
+        df_ = extra_df(fraction, user_input_df, train_df)
         train_df = pd.concat([train_df, df_])
-    test_df = pd.concat([data_df, train_df]).drop_duplicates(keep=False)
+    test_df = pd.concat([user_input_df, train_df]).drop_duplicates(keep=False)
+    test_df = test_df.drop(columns=['is_user_input_stack'])
+    data_df = data_df.loc[~data_df['is_user_input_stack']]
+    train_df = pd.concat([data_df, train_df])
+    train_df = train_df.drop(columns=['is_user_input_stack'])
     _logger.info("Size of Training DF {} and Testing DF are: {}".format(
         len(train_df), len(test_df)))
     return train_df, test_df
-
-
-def preprocess_data(data_list, lower_limit, upper_limit):
-    """Preprocess data."""
-    if len(data_list) == 2:
-        package_dict = (data_list[0]).get('package_list')
-        manifest_dict = (data_list[1]).get('manifest_list')
-        _logger.info("Size of Package ID dictionary {} and Manifest ID dictionary are: {}".format(
-            len(package_dict), len(manifest_dict)))
-        return package_dict, manifest_dict
-    else:
-        raw_data = data_list[0]
-        package_dict, manifest_dict = preprocess_raw_data(raw_data, lower_limit, upper_limit)
-        _logger.info("Size of Package ID dictionary {} and Manifest ID dictionary are: {}".format(
-            len(package_dict), len(manifest_dict)))
-        return package_dict, manifest_dict
 
 
 # Calculating recall according to no of recommendations
@@ -245,7 +234,7 @@ def precision_recall_at_m(m, test_df, recommender, user_item_df):
         pass
 
 
-def save_model(s3_client, recommender):
+def save_model(s3_client, recommender):  # pragma: no cover
     """Save model on s3."""
     try:
         status = s3_client.write_pickle_file(HPF_MODEL_PATH, recommender)
@@ -254,19 +243,17 @@ def save_model(s3_client, recommender):
         _logger.error(str(exc))
 
 
-def save_dictionaries(s3_client, package_id_dict, manifest_id_dict):
+def save_dictionaries(s3_client, package_id_dict, manifest_id_dict):  # pragma: no cover
     """Save the dictionaries for scoring."""
-    if not ((s3_client.object_exists(PACKAGE_TO_ID_MAP)) and
-            (s3_client.object_exists(MANIFEST_TO_ID_MAP))):
-        pkg_status = s3_client.write_json_file(PACKAGE_TO_ID_MAP,
-                                               package_id_dict)
-        mnf_status = s3_client.write_json_file(MANIFEST_TO_ID_MAP,
-                                               manifest_id_dict)
+    pkg_status = s3_client.write_json_file(PACKAGE_TO_ID_MAP,
+                                           package_id_dict)
+    mnf_status = s3_client.write_json_file(MANIFEST_TO_ID_MAP,
+                                           manifest_id_dict)
 
-        if not pkg_status or mnf_status:
-            raise Exception("Unable to store data files for scoring")
+    if not pkg_status or mnf_status:
+        raise Exception("Unable to store data files for scoring")
 
-        logging.info("Saved dictionaries successfully")
+    logging.info("Saved dictionaries successfully")
 
 
 def save_hyperparams(s3_client, content_json):
@@ -279,7 +266,7 @@ def save_hyperparams(s3_client, content_json):
 
 def save_obj(s3_client, trained_recommender, precision_30, recall_30,
              package_id_dict, manifest_id_dict, precision_50, recall_50,
-             lower_lim, upper_lim, latent_factor):
+             lower_lim, upper_lim, latent_factor):  # pragma: no cover
     """Save the objects in s3 bucket."""
     _logger.info("Trying to save the model.")
     save_model(s3_client, trained_recommender)
@@ -296,7 +283,7 @@ def save_obj(s3_client, trained_recommender, precision_30, recall_30,
     save_hyperparams(s3_client, contents)
 
 
-def create_git_pr(s3_client, model_version, recall_at_30):
+def create_git_pr(s3_client, model_version, recall_at_30):  # pragma: no cover
     """Create a git PR automatically if recall_at_30 is higher than previous iteration."""
     keys = [i.key for i in s3_client.list_bucket_objects(prefix=ECOSYSTEM + DEPLOYMENT_PREFIX)]
     dates = []
@@ -344,15 +331,18 @@ def train_model():
     hyper_params = load_hyper_params() or {}
     lower_limit = int(hyper_params.get('lower_limit', 2))
     upper_limit = int(hyper_params.get('upper_limit', 100))
-    latent_factor = int(hyper_params.get('latent_factor', 40))
+    latent_factors = int(hyper_params.get('latent_factor', 40))
     _logger.info("Lower limit {}, Upper limit {} and latent factor {} are used."
-                 .format(lower_limit, upper_limit, latent_factor))
-    package_id_dict, manifest_id_dict = preprocess_data(data, lower_limit, upper_limit)
-    user_item_list = make_user_item_df(manifest_id_dict, package_id_dict)
+                 .format(lower_limit, upper_limit, latent_factors))
+    package_id_dict, manifest_id_dict = preprocess_raw_data(data.get('package_dict', {}),
+                                                            lower_limit, upper_limit)
+    user_input_stacks = data.get('package_dict', {}).\
+        get('user_input_stack', [])
+    user_item_list = make_user_item_df(manifest_id_dict, package_id_dict, user_input_stacks)
     user_item_df = pd.DataFrame(user_item_list)
     training_df, testing_df = train_test_split(user_item_df)
     format_pkg_id_dict, format_mnf_id_dict = format_dict(package_id_dict, manifest_id_dict)
-    trained_recommender = run_recommender(training_df, latent_factor)
+    trained_recommender = run_recommender(training_df, latent_factors)
     precision_at_30, recall_at_30 = precision_recall_at_m(30, testing_df, trained_recommender,
                                                           user_item_df)
     precision_at_50, recall_at_50 = precision_recall_at_m(50, testing_df, trained_recommender,
@@ -360,7 +350,7 @@ def train_model():
     try:
         save_obj(s3_obj, trained_recommender, precision_at_30, recall_at_30,
                  format_pkg_id_dict, format_mnf_id_dict, precision_at_50, recall_at_50,
-                 lower_limit, upper_limit, latent_factor)
+                 lower_limit, upper_limit, latent_factors)
         if GITHUB_TOKEN:
             create_git_pr(s3_client=s3_obj, model_version=MODEL_VERSION, recall_at_30=recall_at_30)
     except Exception as error:
