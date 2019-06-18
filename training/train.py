@@ -285,16 +285,14 @@ def save_obj(s3_client, trained_recommender, precision_30, recall_30,
 
 def create_git_pr(s3_client, model_version, recall_at_30):  # pragma: no cover
     """Create a git PR automatically if recall_at_30 is higher than previous iteration."""
-    keys = [i.key for i in s3_client.list_bucket_objects(prefix=ECOSYSTEM + DEPLOYMENT_PREFIX)]
+    keys = [i.key for i in s3_client.list_bucket_objects()]
     dates = []
     for i in keys:
         if "intermediate-model/hyperparameters.json" in i:
             dates.append(i.split('/')[2])
     dates.remove(model_version)
     previous_version = max(dates)
-    k = 'maven/{depl_prefix}/{prev_ver}/intermediate-model/hyperparameters.json'.format(
-        depl_prefix=DEPLOYMENT_PREFIX, prev_ver=previous_version
-    )
+    k = '{prev_ver}/intermediate-model/hyperparameters.json'.format(prev_ver=previous_version)
     prev_hyperparams = s3_client.read_json_file(k)
 
     # Convert the json description to string
