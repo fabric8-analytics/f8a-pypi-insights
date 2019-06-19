@@ -24,7 +24,7 @@ import numpy as np
 USE_CLOUD_SERVICES = os.environ.get('USE_CLOUD_SERVICES', 'true') == 'true'
 AWS_S3_ACCESS_KEY_ID = os.environ.get('AWS_S3_ACCESS_KEY_ID', '')
 AWS_S3_SECRET_KEY_ID = os.environ.get('AWS_S3_SECRET_ACCESS_KEY', '')
-S3_BUCKET_NAME = os.environ.get('S3_BUCKET_NAME', '')
+S3_BUCKET_NAME = os.environ.get('S3_BUCKET_NAME', 'hpf-insights')
 AWS_S3_ENDPOINT_URL = os.environ.get('AWS_S3_ENDPOINT_URL', '')
 MIN_CONFIDENCE_SCORE = np.float32(int(os.environ.get('MIN_CONFIDENCE_SCORE', 30)))
 GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN', '')
