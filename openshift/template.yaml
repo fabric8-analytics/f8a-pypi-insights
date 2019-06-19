@@ -50,7 +50,10 @@ objects:
           - name: FLASK_LOGGING_LEVEL
             value: ${FLASK_LOGGING_LEVEL}
           - name: S3_BUCKET_NAME
-            value: ${S3_BUCKET_NAME}
+            valueFrom:
+              secretKeyRef:
+                key: hpf-pypi-insights-s3
+                name: bucket
           - name: MODEL_VERSION
             value: ${MODEL_VERSION}
           name: f8a-pypi-insights
@@ -145,12 +148,6 @@ parameters:
   required: false
   name: FLASK_LOGGING_LEVEL
   value: "INFO"
-
-- description: "Name of the S3 bucket to use for scoring/training"
-  displayName: S3 bucket name
-  required: true
-  name: S3_BUCKET_NAME
-  value: "hpf-pypi-insights"
 
 - description: "Model Version - Date Format YYYY-MM-DD"
   displayName: Model Version
