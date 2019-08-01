@@ -31,7 +31,7 @@ import logging
 import subprocess
 from src.config.path_constants import (PACKAGE_TO_ID_MAP,
                                        MANIFEST_TO_ID_MAP, MANIFEST_PATH, HPF_MODEL_PATH, ECOSYSTEM,
-                                       HYPERPARAMETERS_PATH, DEPLOYMENT_PREFIX, MODEL_VERSION)
+                                       HYPERPARAMETERS_PATH, MODEL_VERSION)
 from src.config.cloud_constants import (S3_BUCKET_NAME,
                                         AWS_S3_SECRET_KEY_ID, AWS_S3_ACCESS_KEY_ID, GITHUB_TOKEN)
 
