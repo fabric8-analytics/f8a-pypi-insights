@@ -58,8 +58,8 @@ def load_s3():  # pragma: no cover
 
 def load_data(s3_client):  # pragma: no cover
     """Load data from s3 bucket."""
-    raw_data_dict = s3_client.read_json_file(MANIFEST_PATH)
     _logger.info("Reading Manifest file from {} path".format(MANIFEST_PATH))
+    raw_data_dict = s3_client.read_json_file(MANIFEST_PATH)
     if raw_data_dict is None:
         raise Exception("manifest.json not found")
     _logger.info("Size of Raw Manifest file is: {}".format(len(raw_data_dict)))
