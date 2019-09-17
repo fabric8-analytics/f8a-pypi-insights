@@ -49,7 +49,7 @@ objects:
                 name: hpf-pypi-insights-s3
           - name: FLASK_LOGGING_LEVEL
             value: ${FLASK_LOGGING_LEVEL}
-          - name: S3_BUCKET_NAME
+          - name: AWS_S3_BUCKET_NAME
             valueFrom:
               secretKeyRef:
                 key: bucket
