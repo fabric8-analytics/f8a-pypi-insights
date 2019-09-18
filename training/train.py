@@ -32,7 +32,7 @@ import subprocess
 from src.config.path_constants import (PACKAGE_TO_ID_MAP,
                                        MANIFEST_TO_ID_MAP, MANIFEST_PATH, HPF_MODEL_PATH, ECOSYSTEM,
                                        HYPERPARAMETERS_PATH, MODEL_VERSION)
-from src.config.cloud_constants import (S3_BUCKET_NAME,
+from src.config.cloud_constants import (AWS_S3_BUCKET_NAME,
                                         AWS_S3_SECRET_KEY_ID, AWS_S3_ACCESS_KEY_ID, GITHUB_TOKEN)
 
 logging.basicConfig()
@@ -44,13 +44,13 @@ bq_validator = BQValidation()
 
 def load_s3():  # pragma: no cover
     """Create connection s3."""
-    s3_object = AmazonS3(bucket_name=S3_BUCKET_NAME,
+    s3_object = AmazonS3(bucket_name=AWS_S3_BUCKET_NAME,
                          aws_access_key_id=AWS_S3_ACCESS_KEY_ID,
                          aws_secret_access_key=AWS_S3_SECRET_KEY_ID)
 
     s3_object.connect()
     if s3_object.is_connected():
-        _logger.info("S3 connection established for {} bucket".format(S3_BUCKET_NAME))
+        _logger.info("S3 connection established for {} bucket".format(AWS_S3_BUCKET_NAME))
         return s3_object
 
     raise Exception("S3 Connection Failed")
