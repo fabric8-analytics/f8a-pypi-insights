@@ -248,7 +248,7 @@ def save_dictionaries(s3_client, package_id_dict, manifest_id_dict):  # pragma: 
     """Save the dictionaries for scoring."""
     pkg_status = s3_client.write_json_file(PACKAGE_TO_ID_MAP,
                                            package_id_dict)
-    mnf_status = s3_client.write_json_file(MANIFEST_TO_ID_MAP,
+    mnf_status = s3_client.write_pickle_file(MANIFEST_TO_ID_MAP,
                                            manifest_id_dict)
 
     if not pkg_status or mnf_status:
