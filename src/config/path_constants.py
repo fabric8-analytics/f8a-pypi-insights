@@ -22,7 +22,6 @@ import os
 
 ECOSYSTEM = os.environ.get('HPF_SCORING_REGION', 'pypi')
 MODEL_VERSION = os.environ.get('MODEL_VERSION', '2019-01-03')
-DEPLOYMENT_PREFIX = os.environ.get('DEPLOYMENT_PREFIX', 'dev')
 PACKAGE_TO_ID_MAP = os.path.join(MODEL_VERSION,
                                  'trained-model/package-to-id-dict.json')
 ID_TO_PACKAGE_MAP = os.path.join(MODEL_VERSION,
