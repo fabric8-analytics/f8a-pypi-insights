@@ -249,7 +249,7 @@ def save_dictionaries(s3_client, package_id_dict, manifest_id_dict):  # pragma: 
     pkg_status = s3_client.write_json_file(PACKAGE_TO_ID_MAP,
                                            package_id_dict)
     mnf_status = s3_client.write_pickle_file(MANIFEST_TO_ID_MAP,
-                                           manifest_id_dict)
+                                             manifest_id_dict)
 
     if not pkg_status or mnf_status:
         raise Exception("Unable to store data files for scoring")
@@ -290,7 +290,7 @@ def create_git_pr(s3_client, model_version, recall_at_30):  # pragma: no cover
     dates = []
     for i in keys:
         if "intermediate-model/hyperparameters.json" in i:
-            dates.append(i.split('/')[2])
+            dates.append(i.split('/')[0])
     dates.remove(model_version)
     previous_version = max(dates)
     k = '{prev_ver}/intermediate-model/hyperparameters.json'.format(prev_ver=previous_version)
