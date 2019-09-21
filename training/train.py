@@ -251,7 +251,7 @@ def save_dictionaries(s3_client, package_id_dict, manifest_id_dict):  # pragma: 
     mnf_status = s3_client.write_pickle_file(MANIFEST_TO_ID_MAP,
                                              manifest_id_dict)
 
-    if not pkg_status or mnf_status:
+    if not (pkg_status and mnf_status):
         raise Exception("Unable to store data files for scoring")
 
     logging.info("Saved dictionaries successfully")
