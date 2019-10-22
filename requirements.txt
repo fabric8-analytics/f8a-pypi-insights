@@ -20,3 +20,7 @@ python-dateutil==2.7.5    # via pandas
 pytz==2018.7              # via pandas
 six==1.11.0               # via python-dateutil
 werkzeug==0.14.1          # via flask
+raven[flask]==6.10.0
+contextlib2==0.5.5        # via raven
+blinker==1.4              # via raven
+
