@@ -25,11 +25,17 @@ import flask
 from flask import Flask, request
 
 import src.config.cloud_constants as cloud_constants
+from raven.contrib.flask import Sentry
 from src.config.path_constants import ECOSYSTEM
 from rudra.data_store.aws import AmazonS3
 from src.models.predict_model import HPFScoring
 
 app = Flask(__name__)
+
+SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
+sentry = Sentry(app, dsn=SENTRY_DSN, logging=True, level=logging.ERROR)
+app.logger.info('App initialized, ready to roll...')
+
 
 if cloud_constants.USE_CLOUD_SERVICES:
     s3_client = AmazonS3(bucket_name=cloud_constants.S3_BUCKET_NAME,
