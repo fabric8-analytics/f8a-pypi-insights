@@ -38,7 +38,7 @@ app.logger.info('App initialized, ready to roll...')
 
 
 if cloud_constants.USE_CLOUD_SERVICES:
-    s3_client = AmazonS3(bucket_name=cloud_constants.S3_BUCKET_NAME,
+    s3_client = AmazonS3(bucket_name=cloud_constants.AWS_S3_BUCKET_NAME,
                          aws_access_key_id=cloud_constants.AWS_S3_ACCESS_KEY_ID,
                          aws_secret_access_key=cloud_constants.AWS_S3_SECRET_KEY_ID)
     s3_client.connect()
