@@ -71,6 +71,7 @@ The first script checks the indentation, line lengths, variable names, whitespac
 script checks all documentation strings - its presence and format. Please fix any warnings and errors reported by these
 scripts.
 
+
 List of directories containing source code, that needs to be checked, are stored in a file `directories.txt`
 
 #### Code complexity measurement:
