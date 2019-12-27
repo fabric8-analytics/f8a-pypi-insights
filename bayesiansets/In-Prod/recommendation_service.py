@@ -125,43 +125,5 @@ def recommendation():
     return flask.jsonify(response_json), 200
 
 
-
-
-## Recommendation Service
-# ECOSYSTEM = 'pypi'
-
-
-
-
-
-
-
-
-limit = 5
-response_json = []
-
-_logger.info("Input direct+transitive package list is......")
-# input_packages = recommendation_request.get('package_list', []) +\
-#     recommendation_request.get("transitive_stack", [])
-input_packages = ['pandas', 'numpy', 'datascience', 'folium', 'matplotlib']
-# input_packages = ['numpy', 'keras']
-_logger.info(input_packages)
-
-companions, missing = recommender.predict(input_stack=frozenset(input_packages))
-companions = [x for i, x in enumerate(companions) if i < limit]
-# companions = [d for d in companions if d['package_name'] not in input_packages][:limit]
-
-
-response_json.append({
-    "missing_packages": missing,
-    "companion_packages": companions,
-    "ecosystem": ECOSYSTEM
-})
-_logger.info("Sending response.....")
-_logger.info(response_json)
-
-
-
-
 if __name__ == '__main__':
     app.run(debug=True, port=6006)
