@@ -29,7 +29,7 @@ import hpfrec
 import json
 import logging
 import subprocess
-from src.config.path_constants import (PACKAGE_TO_ID_MAP,
+from src.config.path_constants import (PACKAGE_TO_ID_MAP, ID_TO_PACKAGE_MAP,
                                        MANIFEST_TO_ID_MAP, MANIFEST_PATH, HPF_MODEL_PATH, ECOSYSTEM,
                                        HYPERPARAMETERS_PATH, MODEL_VERSION)
 from src.config.cloud_constants import (AWS_S3_BUCKET_NAME,
@@ -88,13 +88,15 @@ def make_user_item_df(manifest_dict, package_dict, user_input_stacks):
 def generate_package_id_dict(manifest_list):
     """Generate package id dictionary."""
     package_id_dict = dict()
+    id_package_dict = dict()
     count = 0
     for manifest in manifest_list:
         for package_name in manifest:
             if package_name not in package_id_dict:
                 package_id_dict[package_name] = count
+                id_package_dict[count] = package_name
                 count += 1
-    return package_id_dict
+    return package_id_dict, id_package_dict
 
 
 def format_dict(package_id_dict, manifest_id_dict):
@@ -151,9 +153,9 @@ def preprocess_raw_data(raw_data_dict, lower_limit, upper_limit):
         manifest for manifest in all_manifest_list if lower_limit < len(manifest) < upper_limit]
     _logger.info("Number of trimmed manifest = {}".format(
         len(trimmed_manifest_list)))
-    package_id_dict = generate_package_id_dict(trimmed_manifest_list)
+    package_id_dict, id_package_dict = generate_package_id_dict(trimmed_manifest_list)
     manifest_id_dict = generate_manifest_id_dict(trimmed_manifest_list)
-    return package_id_dict, manifest_id_dict
+    return package_id_dict, id_package_dict, manifest_id_dict
 
 
 # Calculating DataFrame according to fraction
@@ -244,14 +246,17 @@ def save_model(s3_client, recommender):  # pragma: no cover
         _logger.error(str(exc))
 
 
-def save_dictionaries(s3_client, package_id_dict, manifest_id_dict):  # pragma: no cover
+def save_dictionaries(s3_client, package_id_dict,
+                      id_package_dict, manifest_id_dict):  # pragma: no cover
     """Save the dictionaries for scoring."""
     pkg_status = s3_client.write_json_file(PACKAGE_TO_ID_MAP,
                                            package_id_dict)
+    id_status = s3_client.write_json_file(ID_TO_PACKAGE_MAP,
+                                          id_package_dict)
     mnf_status = s3_client.write_pickle_file(MANIFEST_TO_ID_MAP,
                                              manifest_id_dict)
 
-    if not (pkg_status and mnf_status):
+    if not (pkg_status and mnf_status and id_status):
         raise Exception("Unable to store data files for scoring")
 
     logging.info("Saved dictionaries successfully")
@@ -266,12 +271,12 @@ def save_hyperparams(s3_client, content_json):
 
 
 def save_obj(s3_client, trained_recommender, precision_30, recall_30,
-             package_id_dict, manifest_id_dict, precision_50, recall_50,
+             package_id_dict, id_package_dict, manifest_id_dict, precision_50, recall_50,
              lower_lim, upper_lim, latent_factor):  # pragma: no cover
     """Save the objects in s3 bucket."""
     _logger.info("Trying to save the model.")
     save_model(s3_client, trained_recommender)
-    save_dictionaries(s3_client, package_id_dict, manifest_id_dict)
+    save_dictionaries(s3_client, package_id_dict, id_package_dict, manifest_id_dict)
     contents = {
         "minimum_length_of_manifest": lower_lim,
         "maximum_length_of_manifest": upper_lim,
@@ -333,8 +338,8 @@ def train_model():
     latent_factors = int(hyper_params.get('latent_factor', 40))
     _logger.info("Lower limit {}, Upper limit {} and latent factor {} are used."
                  .format(lower_limit, upper_limit, latent_factors))
-    package_id_dict, manifest_id_dict = preprocess_raw_data(data.get('package_dict', {}),
-                                                            lower_limit, upper_limit)
+    package_id_dict, id_package_dict, manifest_id_dict = \
+        preprocess_raw_data(data.get('package_dict', {}), lower_limit, upper_limit)
     user_input_stacks = data.get('package_dict', {}).\
         get('user_input_stack', [])
     user_item_list = make_user_item_df(manifest_id_dict, package_id_dict, user_input_stacks)
@@ -348,8 +353,8 @@ def train_model():
                                                           user_item_df)
     try:
         save_obj(s3_obj, trained_recommender, precision_at_30, recall_at_30,
-                 format_pkg_id_dict, format_mnf_id_dict, precision_at_50, recall_at_50,
-                 lower_limit, upper_limit, latent_factors)
+                 format_pkg_id_dict, id_package_dict, format_mnf_id_dict,
+                 precision_at_50, recall_at_50, lower_limit, upper_limit, latent_factors)
         if GITHUB_TOKEN:
             create_git_pr(s3_client=s3_obj, model_version=MODEL_VERSION, recall_at_30=recall_at_30)
     except Exception as error:
