@@ -1,7 +1,5 @@
 FROM centos:7
 
-LABEL maintainer="Aagam Shah <aagam@redhat.com>"
-
 RUN yum install -y epel-release &&\
     yum install -y gcc-c++ git python36-pip python36-requests httpd httpd-devel python36-devel &&\
     yum clean all
