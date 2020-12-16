@@ -1,4 +1,4 @@
-FROM centos:7
+FROM registry.centos.org/centos/centos:7
 
 RUN yum install -y epel-release &&\
     yum install -y gcc-c++ git python36-pip python36-requests httpd httpd-devel python36-devel &&\
