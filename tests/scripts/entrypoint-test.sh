@@ -23,5 +23,6 @@ echo "*** Unit tests ***"
 echo "*****************************************"
 
 pytest --cov=/src/ --cov-report=xml --cov-fail-under=$COVERAGE_THRESHOLD -vv /tests/unit_tests/
-
+pwd
+ls -l 
 mv coverage.xml shared
