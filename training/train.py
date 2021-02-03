@@ -317,6 +317,15 @@ def create_git_pr(s3_client, model_version, recall_at_30):  # pragma: no cover
             '''t = subprocess.Popen(['sh', 'rudra/utils/github_helper.sh', 'f8a-pypi-insights.yaml',
                                   'MODEL_VERSION', str(model_version), description],
                                  shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)'''
+            
+            t1 = subprocess.Popen(['sh', 'pwd'])
+            t1.wait(60)
+            _logger.info('t1 error code: {}'.format(t1.returncode))
+            
+            t2 = subprocess.Popen(['sh', 'ls'])
+            t2.wait(60)
+            _logger.info('t2 error code: {}'.format(t2.returncode))
+            
             t = subprocess.Popen(['sh', 'rudra/utils/github_helper.sh', 'f8a-pypi-insights.yaml',
                                   'MODEL_VERSION', str(model_version), description])
             # Wait for the subprocess to get over
@@ -345,6 +354,43 @@ def create_git_pr(s3_client, model_version, recall_at_30):  # pragma: no cover
 
 def train_model():
     """Training model."""
+    
+    try:
+        # Invoke bash script to create a saas-analytics PR
+        '''t = subprocess.Popen(['sh', 'rudra/utils/github_helper.sh', 'f8a-pypi-insights.yaml',
+                                'MODEL_VERSION', str(model_version), description],
+                                shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)'''
+        
+        t1 = subprocess.Popen(['sh', 'pwd'])
+        t1.wait(60)
+        _logger.info('t1 error code: {}'.format(t1.returncode))
+        
+        t2 = subprocess.Popen(['sh', 'ls'])
+        t2.wait(60)
+        _logger.info('t2 error code: {}'.format(t2.returncode))
+        
+        t = subprocess.Popen(['sh', 'rudra/utils/github_helper.sh', 'f8a-pypi-insights.yaml',
+                                'MODEL_VERSION', '2021-01-01', 'TBD :: DO NOT MERGE THIS PR'])
+        # Wait for the subprocess to get over
+        t.wait(60)
+        if t.returncode == 0:
+            _logger.info("Successfully created a PR")
+        else:
+            _logger.error('ERROR - Git PR process failed with error code {}'.format(
+                t.returncode
+            ))
+    except ValueError:
+        _logger.error('ERROR - Wrong number of arguments passed to subprocess')
+        raise ValueError
+    except subprocess.TimeoutExpired as s:
+        t.kill()
+        _logger.error("ERROR - Script Timeout during PR creation")
+        raise s
+    except subprocess.SubprocessError as s:
+        _logger.error('ERROR - Some unknown error happened')
+        _logger.error('%r' % s)
+        raise s
+
     s3_obj = load_s3()
     data = load_data(s3_obj)
     hyper_params = load_hyper_params() or {}
