@@ -359,15 +359,15 @@ def train_model():
                                 'MODEL_VERSION', str(model_version), description],
                                 shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)'''
         
-        t1 = subprocess.Popen(['sh', 'pwd'])
+        t1 = subprocess.Popen(['/usr/bin/pwd'])
         t1.wait(60)
         _logger.info('t1 error code: {}'.format(t1.returncode))
         
-        t2 = subprocess.Popen(['sh', 'ls'])
+        t2 = subprocess.Popen(['/usr/bin/ls', '-l'])
         t2.wait(60)
         _logger.info('t2 error code: {}'.format(t2.returncode))
         
-        t = subprocess.Popen(['sh', 'rudra/utils/github_helper.sh', 'f8a-pypi-insights.yaml',
+        '''t = subprocess.Popen(['sh', 'rudra/utils/github_helper.sh', 'f8a-pypi-insights.yaml',
                                 'MODEL_VERSION', '2021-01-01', 'TBD :: DO NOT MERGE THIS PR'])
         # Wait for the subprocess to get over
         t.wait(60)
@@ -376,7 +376,7 @@ def train_model():
         else:
             _logger.error('ERROR - Git PR process failed with error code {}'.format(
                 t.returncode
-            ))
+            ))'''
     except ValueError:
         _logger.error('ERROR - Wrong number of arguments passed to subprocess')
         raise ValueError
@@ -388,7 +388,7 @@ def train_model():
         _logger.error('ERROR - Some unknown error happened')
         _logger.error('%r' % s)
         raise s
-
+    '''
     s3_obj = load_s3()
     data = load_data(s3_obj)
     hyper_params = load_hyper_params() or {}
@@ -421,7 +421,7 @@ def train_model():
             _logger.info('GITHUB_TOKEN is missing, cannot raise SAAS PR')
     except Exception as error:
         _logger.error(error)
-        raise
+        raise'''
 
 
 if __name__ == '__main__':
