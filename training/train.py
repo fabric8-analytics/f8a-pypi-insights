@@ -314,9 +314,11 @@ def create_git_pr(s3_client, model_version, recall_at_30):  # pragma: no cover
     if recall_at_30 >= prev_recall:
         try:
             # Invoke bash script to create a saas-analytics PR
-            t = subprocess.Popen(['sh', 'rudra/utils/github_helper.sh', 'f8a-hpf-insights.yaml',
+            '''t = subprocess.Popen(['sh', 'rudra/utils/github_helper.sh', 'f8a-pypi-insights.yaml',
                                   'MODEL_VERSION', str(model_version), description],
-                                 shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                                 shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)'''
+            t = subprocess.Popen(['sh', 'rudra/utils/github_helper.sh', 'f8a-pypi-insights.yaml',
+                                  'MODEL_VERSION', str(model_version), description])
             # Wait for the subprocess to get over
             t.wait(60)
             if t.returncode == 0:
@@ -368,7 +370,7 @@ def train_model():
         save_obj(s3_obj, trained_recommender, precision_at_30, recall_at_30,
                  format_pkg_id_dict, id_package_dict, format_mnf_id_dict,
                  precision_at_50, recall_at_50, lower_limit, upper_limit, latent_factors)
-        _logger.info('Len of github token: {}'.format(GITHUB_TOKEN))
+        _logger.info('Len of github token: {}'.format(len(GITHUB_TOKEN)))
         if GITHUB_TOKEN:
             create_git_pr(s3_client=s3_obj, model_version=MODEL_VERSION, recall_at_30=recall_at_30)
     except Exception as error:
