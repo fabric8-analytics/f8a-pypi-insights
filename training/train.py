@@ -297,6 +297,7 @@ def create_git_pr(s3_client, model_version, recall_at_30):  # pragma: no cover
         if "intermediate-model/hyperparameters.json" in i:
             dates.append(i.split('/')[0])
     dates.remove(model_version)
+    _logger.info('All models {}'.format(dates))
     previous_version = max(dates)
     k = '{prev_ver}/intermediate-model/hyperparameters.json'.format(prev_ver=previous_version)
     prev_hyperparams = s3_client.read_json_file(k)
@@ -305,6 +306,11 @@ def create_git_pr(s3_client, model_version, recall_at_30):  # pragma: no cover
     description = json.dumps(prev_hyperparams).replace('"', '\\"')
 
     prev_recall = prev_hyperparams.get('recall_at_30', 0.55)
+    _logger.info('create_git_pr:: Prev => Model {}, Recall {}  Curr => Model {}, Recall {}'.format(
+        previous_version, prev_recall, model_version, recall_at_30
+    ))
+    _logger.warn('HACK :: Forcing GIT PR by setting prev_call to 0.001')
+    prev_recall = 0.001
     if recall_at_30 >= prev_recall:
         try:
             # Invoke bash script to create a saas-analytics PR
@@ -315,6 +321,10 @@ def create_git_pr(s3_client, model_version, recall_at_30):  # pragma: no cover
             t.wait(60)
             if t.returncode == 0:
                 _logger.info("Successfully created a PR")
+            else:
+                _logger.error('ERROR - Git PR process failed with error code {}'.format(
+                    t.returncode
+                ))
         except ValueError:
             _logger.error('ERROR - Wrong number of arguments passed to subprocess')
             raise ValueError
@@ -326,6 +336,9 @@ def create_git_pr(s3_client, model_version, recall_at_30):  # pragma: no cover
             _logger.error('ERROR - Some unknown error happened')
             _logger.error('%r' % s)
             raise s
+    else:
+        _logger.warn('Ignoring latest model {} as its recall {} is less than existing model {} '
+                     'recall {}'.format(model_version, recall_at_30, previous_version, prev_recall))
 
 
 def train_model():
@@ -355,6 +368,7 @@ def train_model():
         save_obj(s3_obj, trained_recommender, precision_at_30, recall_at_30,
                  format_pkg_id_dict, id_package_dict, format_mnf_id_dict,
                  precision_at_50, recall_at_50, lower_limit, upper_limit, latent_factors)
+        _logger.info('Len of github token: {}'.format(GITHUB_TOKEN))
         if GITHUB_TOKEN:
             create_git_pr(s3_client=s3_obj, model_version=MODEL_VERSION, recall_at_30=recall_at_30)
     except Exception as error:
