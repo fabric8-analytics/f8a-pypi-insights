@@ -317,6 +317,7 @@ def create_git_pr(s3_client, model_version, recall_at_30):  # pragma: no cover
         if "intermediate-model/hyperparameters.json" in i:
             dates.append(i.split('/')[0])
     dates.remove(model_version)
+    _logger.info('All models {}'.format(dates))
     previous_version = max(dates)
     k = '{prev_ver}/intermediate-model/hyperparameters.json'.format(prev_ver=previous_version)
     prev_hyperparams = s3_client.read_json_file(k)
@@ -376,6 +377,7 @@ def train_model():
         save_obj(s3_obj, trained_recommender, precision_at_30, recall_at_30,
                  format_pkg_id_dict, id_package_dict, format_mnf_id_dict,
                  precision_at_50, recall_at_50, lower_limit, upper_limit, latent_factors)
+        _logger.info('Len of github token: {}'.format(GITHUB_TOKEN))
         if GITHUB_TOKEN:
             create_git_pr(s3_client=s3_obj, model_version=MODEL_VERSION, recall_at_30=recall_at_30)
         else:
