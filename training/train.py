@@ -368,8 +368,16 @@ def train_model():
         t2 = subprocess.Popen(['sh', '-c', 'ls'])
         t2.wait(60)
         _logger.info('t2 error code: {}'.format(t2.returncode))
+
+        t3 = subprocess.Popen(['sh', '-c', "git clone https://github.com/fabric8-analytics/fabric8-analytics-rudra ./rudra"])
+        t3.wait(60)
+        _logger.info('t3 error code: {}'.format(t3.returncode))
+
+        t2 = subprocess.Popen(['sh', '-c', 'ls'])
+        t2.wait(60)
+        _logger.info('t2 error code: {}'.format(t2.returncode))
         
-        '''t = subprocess.Popen(['sh', 'rudra/utils/github_helper.sh', 'f8a-pypi-insights.yaml',
+        t = subprocess.Popen(['sh', '-c', './rudra/rudra/utils/github_helper.sh', 'f8a-pypi-insights.yaml',
                                 'MODEL_VERSION', '2021-01-01', 'TBD :: DO NOT MERGE THIS PR'])
         # Wait for the subprocess to get over
         t.wait(60)
@@ -378,7 +386,7 @@ def train_model():
         else:
             _logger.error('ERROR - Git PR process failed with error code {}'.format(
                 t.returncode
-            ))'''
+            ))
     except ValueError:
         _logger.error('ERROR - Wrong number of arguments passed to subprocess')
         raise ValueError
