@@ -359,11 +359,11 @@ def train_model():
                                 'MODEL_VERSION', str(model_version), description],
                                 shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)'''
         
-        t1 = subprocess.Popen(['/usr/bin/pwd'])
+        t1 = subprocess.Popen(['sh', '-c', 'pwd'])
         t1.wait(60)
         _logger.info('t1 error code: {}'.format(t1.returncode))
         
-        t2 = subprocess.Popen(['/usr/bin/ls', '-l'])
+        t2 = subprocess.Popen(['sh', '-c', 'ls'])
         t2.wait(60)
         _logger.info('t2 error code: {}'.format(t2.returncode))
         
