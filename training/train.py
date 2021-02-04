@@ -297,45 +297,42 @@ def create_git_pr(s3_client, model_version, recall_at_30):  # pragma: no cover
         if "intermediate-model/hyperparameters.json" in i:
             dates.append(i.split('/')[0])
     dates.remove(model_version)
-    _logger.info('All models {}'.format(dates))
     previous_version = max(dates)
     k = '{prev_ver}/intermediate-model/hyperparameters.json'.format(prev_ver=previous_version)
     prev_hyperparams = s3_client.read_json_file(k)
 
     # Convert the json description to string
-    description = json.dumps(prev_hyperparams).replace('"', '\\"')
+    description = 'Previous hyper parameters :: ' + json.dumps(prev_hyperparams).replace('"', '\\"')
 
     prev_recall = prev_hyperparams.get('recall_at_30', 0.55)
     _logger.info('create_git_pr:: Prev => Model {}, Recall {}  Curr => Model {}, Recall {}'.format(
-        previous_version, prev_recall, model_version, recall_at_30
-    ))
-    _logger.warn('HACK :: Forcing GIT PR by setting prev_call to 0.001')
-    prev_recall = 0.001
+        previous_version, prev_recall, model_version, recall_at_30))
     if recall_at_30 >= prev_recall:
         try:
             # Invoke bash script to create a saas-analytics PR
-            '''t = subprocess.Popen(['sh', 'rudra/utils/github_helper.sh', 'f8a-pypi-insights.yaml',
-                                  'MODEL_VERSION', str(model_version), description],
-                                 shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)'''
-            
-            t1 = subprocess.Popen(['sh', 'pwd'])
+            # https://raw.githubusercontent.com/fabric8-analytics/
+            # fabric8-analytics-rudra/master/rudra/utils/github_helper.sh
+
+            t1 = subprocess.Popen(['wget', '-v',
+                                   'https://raw.githubusercontent.com/dgpatelgit/'
+                                   'fabric8-analytics-rudra/master/rudra/utils/github_helper.sh',
+                                   '-O', './github_helper.sh'], shell=False)
             t1.wait(60)
-            _logger.info('t1 error code: {}'.format(t1.returncode))
-            
-            t2 = subprocess.Popen(['sh', 'ls'])
+            _logger.info('Error while getting github helper, error code: {}'.format(t1.returncode))
+
+            t2 = subprocess.Popen(['chmod', '+x', './github_helper.sh'], shell=False)
             t2.wait(60)
-            _logger.info('t2 error code: {}'.format(t2.returncode))
-            
-            t = subprocess.Popen(['sh', 'rudra/utils/github_helper.sh', 'f8a-pypi-insights.yaml',
-                                  'MODEL_VERSION', str(model_version), description])
-            # Wait for the subprocess to get over
-            t.wait(60)
-            if t.returncode == 0:
-                _logger.info("Successfully created a PR")
+            _logger.info('Error while setting exec permission to helper, error code: {}'.format(
+                t2.returncode))
+
+            t3 = subprocess.Popen(['./github_helper.sh', 'f8a-pypi-insights.yaml',
+                                   'MODEL_VERSION', str(model_version), description], shell=False)
+            t3.wait(60)
+            if t3.returncode == 0:
+                _logger.info("Successfully created a SAAS PR.")
             else:
                 _logger.error('ERROR - Git PR process failed with error code {}'.format(
-                    t.returncode
-                ))
+                    t3.returncode))
         except ValueError:
             _logger.error('ERROR - Wrong number of arguments passed to subprocess')
             raise ValueError
@@ -354,50 +351,6 @@ def create_git_pr(s3_client, model_version, recall_at_30):  # pragma: no cover
 
 def train_model():
     """Training model."""
-    
-    try:
-        # Invoke bash script to create a saas-analytics PR
-        #t2 = subprocess.Popen(['git', 'config', '--global', 'user.name', 'developer-analytics-bot'], shell=False)
-        #t2.wait(60)
-        #_logger.info('t2 error code: {}'.format(t2.returncode))
-        
-        #t3 = subprocess.Popen(['wget', '-v', 'https://raw.githubusercontent.com/fabric8-analytics/fabric8-analytics-rudra/master/rudra/utils/github_helper.sh', '-O', './github_helper.sh'], shell=False)
-        #t3.wait(60)
-        #_logger.info('t3 error code: {}'.format(t3.returncode))
-        
-        t1 = subprocess.Popen(['wget', '-v', 'https://raw.githubusercontent.com/dgpatelgit/fabric8-analytics-rudra/master/rudra/utils/github_helper.sh', '-O', './github_helper.sh'], shell=False)
-        t1.wait(60)
-        _logger.info('t1 error code: {}'.format(t1.returncode))
-
-        t3 = subprocess.Popen(['chmod', '+x', './github_helper.sh'], shell=False)
-        t3.wait(60)
-        _logger.info('t3 error code: {}'.format(t3.returncode))
-
-        t2 = subprocess.Popen(['ls', '-l'], shell=False)
-        t2.wait(60)
-        _logger.info('t2 error code: {}'.format(t2.returncode))
-
-        t = subprocess.Popen(['./github_helper.sh', 'f8a-pypi-insights.yaml', 'MODEL_VERSION', '2020-01-02', 'TBD :: DO NOT MERGE THIS PR, DUMMY UPDATE TO 2020-01-02'], shell=False)
-        t.wait(60)
-        if t.returncode == 0:
-            _logger.info("Successfully created a PR")
-        else:
-            _logger.error('ERROR - Git PR process failed with error code {}'.format(
-                t.returncode
-            ))
-    except ValueError:
-        _logger.error('ERROR - Wrong number of arguments passed to subprocess')
-        raise ValueError
-    except subprocess.TimeoutExpired as s:
-        t.kill()
-        _logger.error("ERROR - Script Timeout during PR creation")
-        raise s
-    except subprocess.SubprocessError as s:
-        _logger.error('ERROR - Some unknown error happened')
-        _logger.error('%r' % s)
-        raise s
-
-    '''
     s3_obj = load_s3()
     data = load_data(s3_obj)
     hyper_params = load_hyper_params() or {}
@@ -428,7 +381,7 @@ def train_model():
             create_git_pr(s3_client=s3_obj, model_version=MODEL_VERSION, recall_at_30=recall_at_30)
     except Exception as error:
         _logger.error(error)
-        raise'''
+        raise
 
 
 if __name__ == '__main__':
