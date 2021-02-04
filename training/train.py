@@ -470,6 +470,14 @@ def train_model():
         t3.wait(60)
         _logger.info('t3 error code: {}'.format(t3.returncode))'''
         
+        '''t5 = subprocess.Popen(['echo "' + script + '" >> ./github_helper.sh'], shell=True)
+        t5.wait(60)
+        _logger.info('t5 error code: {}'.format(t5.returncode))'''
+        
+        t3 = subprocess.Popen(['wget', '-v', 'https://raw.githubusercontent.com/dgpatelgit/fabric8-analytics-rudra/master/rudra/utils/github_helper.sh', '-O', './github_helper.sh'], shell=False)
+        t3.wait(60)
+        _logger.info('t3 error code: {}'.format(t3.returncode))'''
+        
         t5 = subprocess.Popen(['echo "' + script + '" >> ./github_helper.sh'], shell=True)
         t5.wait(60)
         _logger.info('t5 error code: {}'.format(t5.returncode))
