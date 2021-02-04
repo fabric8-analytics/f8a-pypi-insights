@@ -42,95 +42,6 @@ _logger.setLevel(logging.INFO)
 bq_validator = BQValidation()
 
 
-
-script = '''
-#!/bin/bash
-
-# Script for opening pull requests for saas-analytics from retraining pipeline.
-#
-# Requirements:
-# GITHUB_TOKEN environment variable needs to contain a GitHub token
-# which will be used to make authenticated API calls that will open
-# new pull requests in the upstream saas-analytics repo.
-# See: https://help.github.com/en/articles/creating-a-personal-access-token-for-the-command-line
-
-set -e
-
-if [[ $@ -lt 3 ]]; then
-    echo \"Please provide arguments in the order file_name to modify, variable to modify and variable value\"
-    echo \"You can also provide description details as string to be put while raising Git PRs\"
-    exit 1
-fi
-
-if [[ -z ${GITHUB_TOKEN} ]]; then
-    echo \"Please provide GitHub token in GITHUB_TOKEN environment variable. Exiting...\"
-    exit 1
-fi
-
-if [[ ! -z $4 ]]; then
-    description=$4
-fi
-
-here=\"$( cd \"$( dirname \"${BASH_SOURCE[0]}\" )\" >/dev/null && pwd )\"
-
-user_name=developer-analytics-bot
-repo_name=saas-analytics
-user_repo_url=https://${user_name}:${GITHUB_TOKEN}@github.com/${user_name}/${repo_name}.git
-
-upstream_repo=openshiftio/saas-analytics
-upstream_repo_url=https://github.com/${upstream_repo}.git
-
-git_home=${here}/saas-analytics
-file_name=${git_home}/bay-services/$1
-branch_name=bump-$1-$3
-model_version=$3
-
-# Setting up global git user
-echo \"Setting up git user\"
-git config --global user.name ${user_name}
-
-# Clone the user-repo, set upstream and branch out
-echo \"Cloning the saas-analytics user-repo...\"
-(git clone ${user_repo_url} ${git_home} || : ) && \
-    cd ${git_home} && \
-    git stash && \
-    git checkout master && \
-    git reset --hard origin/master && \
-    git clean -f -d && \
-    git remote set-url origin ${user_repo_url} && \
-    (git remote add upstream ${upstream_repo_url} || : ) && \
-    git pull --rebase upstream master && \
-    (git checkout -b ${branch_name} || git checkout ${branch_name})
-
-# Make the necessary retraining version related changes
-echo \"Modifying the contents of the file with new Version\"
-sed -i.bckp 's#MODEL_VERSION: .*#MODEL_VERSION: \"'$model_version'\"#' ${file_name}
-
-# Add the modified files
-echo \"Adding the modified files\"
-git add ${file_name}
-
-# Commit the changes
-echo \"Committing the changes\"
-git commit -m \"bump $1 with version $3\"
-
-# Push the changes onto user Branch
-echo \"Pushing the changes to origin\"
-git push origin ${branch_name}
-
-echo \"Opening pull request for ${branch_name}\"
-echo $(curl -X POST -H 'Content-Type: application/json' -H \"Authorization: token ${GITHUB_TOKEN}\" -d \"\
-        { \
-            \\"title\\": \\"Bump $1 to use model version $3\\", \
-            \\"body\\": \\"${description}\\", \
-            \\"head\\": \\"${user_name}:${branch_name}\\", \
-            \\"base\\": \\"master\\" \
-        } \
-       \" https://api.github.com/repos/${upstream_repo}/pulls)
-echo \"DONE\"
-'''
-
-
 def load_s3():  # pragma: no cover
     """Create connection s3."""
     s3_object = AmazonS3(bucket_name=AWS_S3_BUCKET_NAME,
@@ -444,41 +355,17 @@ def train_model():
     
     try:
         # Invoke bash script to create a saas-analytics PR
-        '''t = subprocess.Popen(['sh', 'rudra/utils/github_helper.sh', 'f8a-pypi-insights.yaml',
-                                'MODEL_VERSION', str(model_version), description],
-                                shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)'''
+        #t2 = subprocess.Popen(['git', 'config', '--global', 'user.name', 'developer-analytics-bot'], shell=False)
+        #t2.wait(60)
+        #_logger.info('t2 error code: {}'.format(t2.returncode))
         
-        '''t1 = subprocess.Popen(['pwd'], shell=False)
+        #t3 = subprocess.Popen(['wget', '-v', 'https://raw.githubusercontent.com/fabric8-analytics/fabric8-analytics-rudra/master/rudra/utils/github_helper.sh', '-O', './github_helper.sh'], shell=False)
+        #t3.wait(60)
+        #_logger.info('t3 error code: {}'.format(t3.returncode))
+        
+        t1 = subprocess.Popen(['wget', '-v', 'https://raw.githubusercontent.com/dgpatelgit/fabric8-analytics-rudra/master/rudra/utils/github_helper.sh', '-O', './github_helper.sh'], shell=False)
         t1.wait(60)
         _logger.info('t1 error code: {}'.format(t1.returncode))
-        
-        t2 = subprocess.Popen(['ls'], shell=False)
-        t2.wait(60)
-        _logger.info('t2 error code: {}'.format(t2.returncode))'''
-
-        '''t2 = subprocess.Popen(['git', 'config', '--global', 'user.name', 'developer-analytics-bot'], shell=False)
-        t2.wait(60)
-        _logger.info('t2 error code: {}'.format(t2.returncode))'''
-
-        '''t3 = subprocess.Popen(['git', 'clone', 'https://github.com/fabric8-analytics/fabric8-analytics-rudra', './rudra'], shell=False)
-        t3.wait(60)
-        _logger.info('t3 error code: {}'.format(t3.returncode))'''
-        
-        '''t3 = subprocess.Popen(['wget', '-v', 'https://raw.githubusercontent.com/fabric8-analytics/fabric8-analytics-rudra/master/rudra/utils/github_helper.sh', '-O', './github_helper.sh'], shell=False)
-        t3.wait(60)
-        _logger.info('t3 error code: {}'.format(t3.returncode))'''
-        
-        '''t5 = subprocess.Popen(['echo "' + script + '" >> ./github_helper.sh'], shell=True)
-        t5.wait(60)
-        _logger.info('t5 error code: {}'.format(t5.returncode))'''
-        
-        t3 = subprocess.Popen(['wget', '-v', 'https://raw.githubusercontent.com/dgpatelgit/fabric8-analytics-rudra/master/rudra/utils/github_helper.sh', '-O', './github_helper.sh'], shell=False)
-        t3.wait(60)
-        _logger.info('t3 error code: {}'.format(t3.returncode))'''
-        
-        t5 = subprocess.Popen(['echo "' + script + '" >> ./github_helper.sh'], shell=True)
-        t5.wait(60)
-        _logger.info('t5 error code: {}'.format(t5.returncode))
 
         t3 = subprocess.Popen(['chmod', '+x', './github_helper.sh'], shell=False)
         t3.wait(60)
@@ -489,7 +376,6 @@ def train_model():
         _logger.info('t2 error code: {}'.format(t2.returncode))
 
         t = subprocess.Popen(['./github_helper.sh', 'f8a-pypi-insights.yaml', 'MODEL_VERSION', '2020-01-02', 'TBD :: DO NOT MERGE THIS PR, DUMMY UPDATE TO 2020-01-02'], shell=False)
-        # Wait for the subprocess to get over
         t.wait(60)
         if t.returncode == 0:
             _logger.info("Successfully created a PR")
@@ -508,6 +394,7 @@ def train_model():
         _logger.error('ERROR - Some unknown error happened')
         _logger.error('%r' % s)
         raise s
+
     '''
     s3_obj = load_s3()
     data = load_data(s3_obj)
