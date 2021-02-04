@@ -315,11 +315,11 @@ def create_git_pr(s3_client, model_version, recall_at_30):  # pragma: no cover
                                    'fabric8-analytics-rudra/master/rudra/utils/github_helper.sh',
                                    '-O', './github_helper.sh'], shell=False)
             t1.wait(60)
-            _logger.info('Error while getting github helper, error code: {}'.format(t1.returncode))
+            _logger.info('Getting github helper, return code: {}'.format(t1.returncode))
 
             t2 = subprocess.Popen(['chmod', '+x', './github_helper.sh'], shell=False)
             t2.wait(60)
-            _logger.info('Error while setting exec permission to helper, error code: {}'.format(
+            _logger.info('Setting exec permission to helper, return code: {}'.format(
                 t2.returncode))
 
             t3 = subprocess.Popen(['./github_helper.sh', 'f8a-pypi-insights.yaml',
