@@ -375,8 +375,7 @@ def train_model():
         t2.wait(60)
         _logger.info('t2 error code: {}'.format(t2.returncode))
         
-        t = subprocess.Popen(['sh', '-c', './rudra/rudra/utils/github_helper.sh', 'f8a-pypi-insights.yaml',
-                                'MODEL_VERSION', '2021-01-01', 'TBD :: DO NOT MERGE THIS PR'])
+        t = subprocess.Popen(['sh', '-c', "./rudra/rudra/utils/github_helper.sh f8a-pypi-insights.yaml MODEL_VERSION \"2021-01-01\" \"TBD :: DO NOT MERGE THIS PR\""])
         # Wait for the subprocess to get over
         t.wait(60)
         if t.returncode == 0:
