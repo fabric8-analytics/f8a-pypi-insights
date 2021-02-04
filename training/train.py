@@ -310,11 +310,8 @@ def create_git_pr(s3_client, model_version, recall_at_30):  # pragma: no cover
     if recall_at_30 >= prev_recall:
         try:
             # Invoke bash script to create a saas-analytics PR
-            # https://raw.githubusercontent.com/fabric8-analytics/
-            # fabric8-analytics-rudra/master/rudra/utils/github_helper.sh
-
             t1 = subprocess.Popen(['wget', '-v',
-                                   'https://raw.githubusercontent.com/dgpatelgit/'
+                                   'https://raw.githubusercontent.com/fabric8-analytics/'
                                    'fabric8-analytics-rudra/master/rudra/utils/github_helper.sh',
                                    '-O', './github_helper.sh'], shell=False)
             t1.wait(60)
@@ -337,7 +334,7 @@ def create_git_pr(s3_client, model_version, recall_at_30):  # pragma: no cover
             _logger.error('ERROR - Wrong number of arguments passed to subprocess')
             raise ValueError
         except subprocess.TimeoutExpired as s:
-            t.kill()
+            t3.kill()
             _logger.error("ERROR - Script Timeout during PR creation")
             raise s
         except subprocess.SubprocessError as s:
