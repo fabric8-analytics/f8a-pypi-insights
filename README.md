@@ -1,3 +1,6 @@
+![CI](https://github.com/fabric8-analytics/f8a-pypi-insights/workflows/CI/badge.svg?branch=master)
+[![codecov](https://codecov.io/gh/fabric8-analytics/f8a-pypi-insights/branch/master/graph/badge.svg?token=qi833miGbI)](https://codecov.io/gh/fabric8-analytics/f8a-pypi-insights)
+
 # f8a-pypi-insights
 
 This repository contains the code for the model that serves the companion recommendations for Python.
