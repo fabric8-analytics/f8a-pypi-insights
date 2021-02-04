@@ -361,23 +361,27 @@ def train_model():
                                 'MODEL_VERSION', str(model_version), description],
                                 shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)'''
         
-        t1 = subprocess.Popen(['sh', '-c', 'pwd'])
+        t1 = subprocess.Popen(['pwd'], shell=False)
         t1.wait(60)
         _logger.info('t1 error code: {}'.format(t1.returncode))
         
-        t2 = subprocess.Popen(['sh', '-c', 'ls'])
+        t2 = subprocess.Popen(['ls'], shell=False)
         t2.wait(60)
         _logger.info('t2 error code: {}'.format(t2.returncode))
 
-        t3 = subprocess.Popen(['sh', '-c', "git clone https://github.com/fabric8-analytics/fabric8-analytics-rudra ./rudra"])
+        t2 = subprocess.Popen(['git', 'config', '--global', 'user.name', 'developer-analytics-bot'], shell=False)
+        t2.wait(60)
+        _logger.info('t2 error code: {}'.format(t2.returncode))
+
+        t3 = subprocess.Popen(['git', 'clone', 'https://github.com/fabric8-analytics/fabric8-analytics-rudra', './rudra'], shell=False)
         t3.wait(60)
         _logger.info('t3 error code: {}'.format(t3.returncode))
 
-        t2 = subprocess.Popen(['sh', '-c', 'ls'])
+        t2 = subprocess.Popen(['ls'], shell=False)
         t2.wait(60)
         _logger.info('t2 error code: {}'.format(t2.returncode))
-        
-        t = subprocess.Popen(['sh', '-c', "./rudra/rudra/utils/github_helper.sh f8a-pypi-insights.yaml MODEL_VERSION \"2021-01-01\" \"TBD :: DO NOT MERGE THIS PR\""])
+
+        t = subprocess.Popen(['./rudra/rudra/utils/github_helper.sh', 'f8a-pypi-insights.yaml', 'MODEL_VERSION', '2021-01-01', 'TBD :: DO NOT MERGE THIS PR'], shell=False)
         # Wait for the subprocess to get over
         t.wait(60)
         if t.returncode == 0:
