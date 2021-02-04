@@ -7,7 +7,7 @@ locale charmap
 set -ex
 
 export RADONFILESENCODING=UTF-8
-
+cd insights
 echo "*****************************************"
 echo "*** Cyclomatic complexity measurement ***"
 echo "*****************************************"
@@ -25,4 +25,3 @@ echo "*****************************************"
  
 pytest --cov=/src/ --cov-report=xml --cov-fail-under=$COVERAGE_THRESHOLD -vv /tests/unit_tests/
 
-mv coverage.xml shared
