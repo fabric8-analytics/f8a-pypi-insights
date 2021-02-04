@@ -317,7 +317,6 @@ def create_git_pr(s3_client, model_version, recall_at_30):  # pragma: no cover
         if "intermediate-model/hyperparameters.json" in i:
             dates.append(i.split('/')[0])
     dates.remove(model_version)
-    _logger.info('All models {}'.format(dates))
     previous_version = max(dates)
     k = '{prev_ver}/intermediate-model/hyperparameters.json'.format(prev_ver=previous_version)
     prev_hyperparams = s3_client.read_json_file(k)
@@ -352,50 +351,6 @@ def create_git_pr(s3_client, model_version, recall_at_30):  # pragma: no cover
 
 def train_model():
     """Training model."""
-    
-    try:
-        # Invoke bash script to create a saas-analytics PR
-        #t2 = subprocess.Popen(['git', 'config', '--global', 'user.name', 'developer-analytics-bot'], shell=False)
-        #t2.wait(60)
-        #_logger.info('t2 error code: {}'.format(t2.returncode))
-        
-        #t3 = subprocess.Popen(['wget', '-v', 'https://raw.githubusercontent.com/fabric8-analytics/fabric8-analytics-rudra/master/rudra/utils/github_helper.sh', '-O', './github_helper.sh'], shell=False)
-        #t3.wait(60)
-        #_logger.info('t3 error code: {}'.format(t3.returncode))
-        
-        t1 = subprocess.Popen(['wget', '-v', 'https://raw.githubusercontent.com/dgpatelgit/fabric8-analytics-rudra/master/rudra/utils/github_helper.sh', '-O', './github_helper.sh'], shell=False)
-        t1.wait(60)
-        _logger.info('t1 error code: {}'.format(t1.returncode))
-
-        t3 = subprocess.Popen(['chmod', '+x', './github_helper.sh'], shell=False)
-        t3.wait(60)
-        _logger.info('t3 error code: {}'.format(t3.returncode))
-
-        t2 = subprocess.Popen(['ls', '-l'], shell=False)
-        t2.wait(60)
-        _logger.info('t2 error code: {}'.format(t2.returncode))
-
-        t = subprocess.Popen(['./github_helper.sh', 'f8a-pypi-insights.yaml', 'MODEL_VERSION', '2020-01-02', 'TBD :: DO NOT MERGE THIS PR, DUMMY UPDATE TO 2020-01-02'], shell=False)
-        t.wait(60)
-        if t.returncode == 0:
-            _logger.info("Successfully created a PR")
-        else:
-            _logger.error('ERROR - Git PR process failed with error code {}'.format(
-                t.returncode
-            ))
-    except ValueError:
-        _logger.error('ERROR - Wrong number of arguments passed to subprocess')
-        raise ValueError
-    except subprocess.TimeoutExpired as s:
-        t.kill()
-        _logger.error("ERROR - Script Timeout during PR creation")
-        raise s
-    except subprocess.SubprocessError as s:
-        _logger.error('ERROR - Some unknown error happened')
-        _logger.error('%r' % s)
-        raise s
-
-    '''
     s3_obj = load_s3()
     data = load_data(s3_obj)
     hyper_params = load_hyper_params() or {}
@@ -428,7 +383,7 @@ def train_model():
             _logger.info('GITHUB_TOKEN is missing, cannot raise SAAS PR')
     except Exception as error:
         _logger.error(error)
-        raise'''
+        raise
 
 
 if __name__ == '__main__':
