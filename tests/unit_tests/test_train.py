@@ -47,7 +47,7 @@ class TestTraining:
     @mock.patch("training.train.validate_manifest_data", side_effect=mock_validate_manifest_data)
     def test_preprocess_raw_data(self, _):
         """Test preprocessing of raw data."""
-        package_id_dict, manifest_id_dict = preprocess_raw_data(
+        package_id_dict, id_package_dict, manifest_id_dict = preprocess_raw_data(
             raw_data_dict=manifest.get('package_dict'),
             lower_limit=1,
             upper_limit=100)
