@@ -289,6 +289,15 @@ def save_obj(s3_client, trained_recommender, precision_30, recall_30,
     save_hyperparams(s3_client, contents)
 
 
+def exec_command(command_args, max_wait_time):
+    """Execute the given command with arguments and perform error checks."""
+    t = subprocess.Popen(command_args, shell=False)
+    t.wait(max_wait_time)
+    if t.returncode != 0:
+        _logger.error('ERROR - [ {} ] failed with error code {}'.format(
+            ' '.join(command_args), t.returncode))
+
+
 def create_git_pr(s3_client, model_version, recall_at_30):  # pragma: no cover
     """Create a git PR automatically if recall_at_30 is higher than previous iteration."""
     keys = [i.key for i in s3_client.list_bucket_objects()]
@@ -309,32 +318,22 @@ def create_git_pr(s3_client, model_version, recall_at_30):  # pragma: no cover
         previous_version, prev_recall, model_version, recall_at_30))
     if recall_at_30 >= prev_recall:
         try:
-            # Invoke bash script to create a saas-analytics PR
-            t1 = subprocess.Popen(['wget', '-v',
-                                   'https://raw.githubusercontent.com/fabric8-analytics/'
-                                   'fabric8-analytics-rudra/master/rudra/utils/github_helper.sh',
-                                   '-O', './github_helper.sh'], shell=False)
-            t1.wait(60)
-            _logger.info('Getting github helper, return code: {}'.format(t1.returncode))
+            # 1. Get the bash script from rudra to raise PR
+            exec_command(['wget', '-v',
+                          'https://raw.githubusercontent.com/fabric8-analytics/'
+                          'fabric8-analytics-rudra/master/rudra/utils/github_helper.sh',
+                          '-O', './github_helper.sh'], 60)
 
-            t2 = subprocess.Popen(['chmod', '+x', './github_helper.sh'], shell=False)
-            t2.wait(60)
-            _logger.info('Setting exec permission to helper, return code: {}'.format(
-                t2.returncode))
+            # 2. Provide execute permission to the script file.
+            exec_command(['chmod', '+x', './github_helper.sh'], 30)
 
-            t3 = subprocess.Popen(['./github_helper.sh', 'f8a-pypi-insights.yaml',
-                                   'MODEL_VERSION', str(model_version), description], shell=False)
-            t3.wait(60)
-            if t3.returncode == 0:
-                _logger.info("Successfully created a SAAS PR.")
-            else:
-                _logger.error('ERROR - Git PR process failed with error code {}'.format(
-                    t3.returncode))
+            # 3. Invoke bash script to create a saas-analytics PR
+            exec_command(['./github_helper.sh', 'f8a-pypi-insights.yaml', 'MODEL_VERSION',
+                          str(model_version), description], 60)
         except ValueError:
             _logger.error('ERROR - Wrong number of arguments passed to subprocess')
             raise ValueError
         except subprocess.TimeoutExpired as s:
-            t3.kill()
             _logger.error("ERROR - Script Timeout during PR creation")
             raise s
         except subprocess.SubprocessError as s:
@@ -373,9 +372,10 @@ def train_model():
         save_obj(s3_obj, trained_recommender, precision_at_30, recall_at_30,
                  format_pkg_id_dict, id_package_dict, format_mnf_id_dict,
                  precision_at_50, recall_at_50, lower_limit, upper_limit, latent_factors)
-        _logger.info('Len of github token: {}'.format(len(GITHUB_TOKEN)))
         if GITHUB_TOKEN:
             create_git_pr(s3_client=s3_obj, model_version=MODEL_VERSION, recall_at_30=recall_at_30)
+        else:
+            _logger.info('GITHUB_TOKEN is missing, cannot raise SAAS PR')
     except Exception as error:
         _logger.error(error)
         raise
