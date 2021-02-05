@@ -291,11 +291,22 @@ def save_obj(s3_client, trained_recommender, precision_30, recall_30,
 
 def exec_command(command_args, max_wait_time):
     """Execute the given command with arguments and perform error checks."""
-    t = subprocess.Popen(command_args, shell=False)
-    t.wait(max_wait_time)
-    if t.returncode != 0:
-        _logger.error('ERROR - [ {} ] failed with error code {}'.format(
-            ' '.join(command_args), t.returncode))
+    try:
+        t = subprocess.Popen(command_args, shell=False)
+        t.wait(max_wait_time)
+        if t.returncode != 0:
+            _logger.error('ERROR - [ {} ] failed with error code {}'.format(
+                ' '.join(command_args), t.returncode))
+    except ValueError:
+        _logger.error('ERROR - Wrong number of arguments passed to subprocess')
+        raise ValueError
+    except subprocess.TimeoutExpired as s:
+        _logger.error('ERROR - Script Timeout during PR creation')
+        raise s
+    except subprocess.SubprocessError as s:
+        _logger.error('ERROR - Some unknown error happened')
+        _logger.error('%r' % s)
+        raise s
 
 
 def create_git_pr(s3_client, model_version, recall_at_30):  # pragma: no cover
@@ -330,16 +341,9 @@ def create_git_pr(s3_client, model_version, recall_at_30):  # pragma: no cover
             # 3. Invoke bash script to create a saas-analytics PR
             exec_command(['./github_helper.sh', 'f8a-pypi-insights.yaml', 'MODEL_VERSION',
                           str(model_version), description], 60)
-        except ValueError:
-            _logger.error('ERROR - Wrong number of arguments passed to subprocess')
-            raise ValueError
-        except subprocess.TimeoutExpired as s:
-            _logger.error("ERROR - Script Timeout during PR creation")
-            raise s
-        except subprocess.SubprocessError as s:
-            _logger.error('ERROR - Some unknown error happened')
-            _logger.error('%r' % s)
-            raise s
+        except Exception as e:
+            _logger.error('ERROR - execute command raise exception')
+            raise e
     else:
         _logger.warn('Ignoring latest model {} as its recall {} is less than existing model {} '
                      'recall {}'.format(model_version, recall_at_30, previous_version, prev_recall))
