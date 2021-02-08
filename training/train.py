@@ -44,8 +44,8 @@ _logger.setLevel(logging.INFO)
 bq_validator = BQValidation()
 
 DEPLOYMENT_PREFIX_ENVIRONMENT_NAME_MAP = {
-    'stage': 'staging',
-    'prod': 'production'
+    'STAGE': 'staging',
+    'PROD': 'production'
 }
 
 
