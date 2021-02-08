@@ -106,7 +106,7 @@ class TestTraining:
             "f1_score_at_30": 0.04814814814814815,
             "precision_at_50": 0.011,
             "recall_at_50": 0.77,
-            "f1_score_at_50": 0.06144638403990025
+            "f1_score_at_50": 0.021690140845070423
         }
 
     def test_get_deployed_model_version(self):
