@@ -24,7 +24,8 @@ import pickle
 import mock
 import pandas as pd
 from fractions import Fraction
-from training.train import preprocess_raw_data, make_user_item_df, format_dict, train_test_split
+from training.train import preprocess_raw_data, make_user_item_df, format_dict, \
+                           train_test_split, build_hyperparams, get_deployed_model_version
 
 with open('tests/data/manifest.json', 'r') as f:
     manifest = json.load(f)
@@ -34,6 +35,8 @@ with open('tests/data/package-to-id-dict.json', 'r') as f:
     package_to_id_dict = json.load(f)
 with open('tests/data/user-item-list.json', 'r') as f:
     user_item_list = json.load(f)
+with open('tests/data/f8a-pypi-insights.yaml', 'r') as f:
+    yaml_data = f.read()
 
 
 def mock_validate_manifest_data(x):
@@ -88,3 +91,31 @@ class TestTraining:
         train_df, test_df = train_test_split(user_item_df)
         assert round(float(Fraction(len(test_df.index),
                                     len(user_input_df.index))), 2) == 0.20
+
+    def test_build_hyper_params(self):
+        """Test build hyper params."""
+        output = build_hyperparams(2, 100, 40, 0.025, 0.65, 0.032, 0.77)
+        assert output == {
+            "deployment": '',
+            "model_version": '',
+            "minimum_length_of_manifest": 2,
+            "maximum_length_of_manifest": 100,
+            "latent_factor": 40,
+            "precision_at_30": 0.025,
+            "recall_at_30": 0.65,
+            "f1_score_at_30": 0.048148148,
+            "precision_at_50": 0.011,
+            "recall_at_50": 0.77,
+            "f1_score_at_50": 0.021690141
+        }
+
+    def test_get_deployed_model_version(self):
+        """Get model version for given deployment."""
+        model_version = get_deployed_model_version(yaml_data, 'dev')
+        assert model_version == ''
+
+        model_version = get_deployed_model_version(yaml_data, 'stage')
+        assert model_version == '2020-10-30'
+
+        model_version = get_deployed_model_version(yaml_data, 'prod')
+        assert model_version == '2020-06-12'
