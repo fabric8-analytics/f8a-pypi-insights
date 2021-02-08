@@ -33,9 +33,9 @@ import yaml
 
 from src.config.path_constants import (PACKAGE_TO_ID_MAP, ID_TO_PACKAGE_MAP,
                                        MANIFEST_TO_ID_MAP, MANIFEST_PATH, HPF_MODEL_PATH, ECOSYSTEM,
-                                       HYPERPARAMETERS_PATH, MODEL_VERSION, DEPLOYMENT_PREFIX)
-from src.config.cloud_constants import (AWS_S3_BUCKET_NAME,
-                                        AWS_S3_SECRET_KEY_ID, AWS_S3_ACCESS_KEY_ID, GITHUB_TOKEN)
+                                       HYPERPARAMETERS_PATH, MODEL_VERSION)
+from src.config.cloud_constants import (AWS_S3_BUCKET_NAME, AWS_S3_SECRET_KEY_ID,
+                                        AWS_S3_ACCESS_KEY_ID, GITHUB_TOKEN, DEPLOYMENT_PREFIX)
 
 logging.basicConfig()
 _logger = logging.getLogger()
@@ -324,22 +324,29 @@ def exec_command(command_args, max_wait_time):
         raise s
 
 
-def get_deployed_model_version():
-    """Read deployment yaml and return the deployed model verison."""
-    # 1. Fetch deployment yaml from saas repo.
+def get_deployment_yaml():
+    """Get the deployment yaml data."""
+    # Fetch deployment yaml from saas repo.
     exec_command(['wget', '-v',
                   'https://raw.githubusercontent.com/openshiftio/saas-analytics/'
                   'master/bay-services/f8a-pypi-insights.yaml',
                   '-O', './f8a-pypi-insights.yaml'], 60)
 
-    # 2. Read yaml data and convert to dict
-    yaml_dict = ''
+    yaml_data = ''
     with open('./f8a-pypi-insights.yaml', 'r') as fp:
-        yaml_dict = yaml.load(fp.read(), Loader=yaml.FullLoader)
+        yaml_data = fp.read()
 
-    # 3. Read model version data for given deploment.
+    return yaml_data
+
+
+def get_deployed_model_version(yaml_data, deployment_prefix):
+    """Read deployment yaml and return the deployed model verison."""
+    # 1. Convert yaml to dict
+    yaml_dict = yaml.load(yaml_data, Loader=yaml.FullLoader)
+
+    # 2. Read model version data for given deploment.
     model_version = ''
-    environment_name = DEPLOYMENT_PREFIX_ENVIRONMENT_NAME_MAP.get(DEPLOYMENT_PREFIX, '')
+    environment_name = DEPLOYMENT_PREFIX_ENVIRONMENT_NAME_MAP.get(deployment_prefix, '')
     if environment_name:
         environments = yaml_dict.get('services', [{}])[0].get('environments', [])
         for env in environments:
@@ -348,17 +355,17 @@ def get_deployed_model_version():
                 break
     else:
         _logger.error('ERROR - Invalid deployment prefix: "{}", supported values: {}'.format(
-            DEPLOYMENT_PREFIX, list(DEPLOYMENT_PREFIX_ENVIRONMENT_NAME_MAP.keys())))
+            deployment_prefix, list(DEPLOYMENT_PREFIX_ENVIRONMENT_NAME_MAP.keys())))
 
     _logger.info('Model version: {} for deployment prefix: {}'.format(
-        model_version, DEPLOYMENT_PREFIX))
+        model_version, deployment_prefix))
     return model_version
 
 
 def create_git_pr(s3_client, hyper_params):  # pragma: no cover
     """Create a git PR automatically if recall_at_30 is higher than previous iteration."""
-    recall_at_30 = hyper_params['recall_at_30']
-    previous_version = get_deployed_model_version()
+    yaml_data = get_deployment_yaml()
+    previous_version = get_deployed_model_version(yaml_data, DEPLOYMENT_PREFIX)
     k = '{prev_ver}/intermediate-model/hyperparameters.json'.format(prev_ver=previous_version)
     prev_hyperparams = s3_client.read_json_file(k)
 
@@ -373,6 +380,7 @@ def create_git_pr(s3_client, hyper_params):  # pragma: no cover
                       previous_version, json.dumps(prev_hyperparams).replace('"', '\\"'),
                       MODEL_VERSION, json.dumps(hyper_params).replace('"', '\\"'))
 
+    recall_at_30 = hyper_params['recall_at_30']
     prev_recall = prev_hyperparams.get('recall_at_30', 0.55)
     _logger.info('create_git_pr:: Prev => Model {}, Recall {}  Curr => Model {}, Recall {}'.format(
         previous_version, prev_recall, MODEL_VERSION, recall_at_30))
