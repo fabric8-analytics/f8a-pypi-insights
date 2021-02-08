@@ -29,9 +29,11 @@ import hpfrec
 import json
 import logging
 import subprocess
+import yaml
+
 from src.config.path_constants import (PACKAGE_TO_ID_MAP, ID_TO_PACKAGE_MAP,
                                        MANIFEST_TO_ID_MAP, MANIFEST_PATH, HPF_MODEL_PATH, ECOSYSTEM,
-                                       HYPERPARAMETERS_PATH, MODEL_VERSION)
+                                       HYPERPARAMETERS_PATH, MODEL_VERSION, DEPLOYMENT_PREFIX)
 from src.config.cloud_constants import (AWS_S3_BUCKET_NAME,
                                         AWS_S3_SECRET_KEY_ID, AWS_S3_ACCESS_KEY_ID, GITHUB_TOKEN)
 
@@ -40,6 +42,11 @@ _logger = logging.getLogger()
 _logger.setLevel(logging.INFO)
 
 bq_validator = BQValidation()
+
+DEPLOYMENT_PREFIX_ENVIRONMENT_NAME_MAP = {
+    'stage': 'staging',
+    'prod': 'production'
+}
 
 
 def load_s3():  # pragma: no cover
@@ -270,23 +277,31 @@ def save_hyperparams(s3_client, content_json):
     _logger.info("Hyperparameters saved")
 
 
-def save_obj(s3_client, trained_recommender, precision_30, recall_30,
-             package_id_dict, id_package_dict, manifest_id_dict, precision_50, recall_50,
-             lower_lim, upper_lim, latent_factor):  # pragma: no cover
+def save_obj(s3_client, trained_recommender, hyper_params,
+             package_id_dict, id_package_dict, manifest_id_dict):
     """Save the objects in s3 bucket."""
     _logger.info("Trying to save the model.")
     save_model(s3_client, trained_recommender)
     save_dictionaries(s3_client, package_id_dict, id_package_dict, manifest_id_dict)
-    contents = {
-        "minimum_length_of_manifest": lower_lim,
-        "maximum_length_of_manifest": upper_lim,
+    save_hyperparams(s3_client, hyper_params)
+
+
+def build_hyperparams(lower_limit, upper_limit, latent_factor,
+                      precision_30, recall_30, precision_50, recall_50):
+    """Build hyper parameter object."""
+    return {
+        "deployment": DEPLOYMENT_PREFIX_ENVIRONMENT_NAME_MAP.get(DEPLOYMENT_PREFIX, ''),
+        "model_version": MODEL_VERSION,
+        "minimum_length_of_manifest": lower_limit,
+        "maximum_length_of_manifest": upper_limit,
+        "latent_factor": latent_factor,
         "precision_at_30": precision_30,
         "recall_at_30": recall_30,
+        "f1_score_at_30": 2 * ((precision_30 * recall_30) / (precision_30 + recall_30)),
         "precision_at_50": precision_50,
         "recall_at_50": recall_50,
-        "latent_factor": latent_factor
+        "f1_score_at_50": 2 * ((precision_50 * recall_50) / (precision_50 + recall_50)),
     }
-    save_hyperparams(s3_client, contents)
 
 
 def exec_command(command_args, max_wait_time):
@@ -309,24 +324,58 @@ def exec_command(command_args, max_wait_time):
         raise s
 
 
-def create_git_pr(s3_client, model_version, recall_at_30):  # pragma: no cover
+def get_deployed_model_version():
+    """Read deployment yaml and return the deployed model verison."""
+    # 1. Fetch deployment yaml from saas repo.
+    exec_command(['wget', '-v',
+                  'https://raw.githubusercontent.com/openshiftio/saas-analytics/'
+                  'master/bay-services/f8a-pypi-insights.yaml',
+                  '-O', './f8a-pypi-insights.yaml'], 60)
+
+    # 2. Read yaml data and convert to dict
+    yaml_dict = ''
+    with open('./f8a-pypi-insights.yaml', 'r') as fp:
+        yaml_dict = yaml.load(fp.read(), Loader=yaml.FullLoader)
+
+    # 3. Read model version data for given deploment.
+    model_version = ''
+    environment_name = DEPLOYMENT_PREFIX_ENVIRONMENT_NAME_MAP.get(DEPLOYMENT_PREFIX, '')
+    if environment_name:
+        environments = yaml_dict.get('services', [{}])[0].get('environments', [])
+        for env in environments:
+            if env.get('name', '') == environment_name:
+                model_version = env.get('parameters', {}).get('MODEL_VERSION', '')
+                break
+    else:
+        _logger.error('ERROR - Invalid deployment prefix: "{}", supported values: {}'.format(
+            DEPLOYMENT_PREFIX, list(DEPLOYMENT_PREFIX_ENVIRONMENT_NAME_MAP.keys())))
+
+    _logger.info('Model version: {} for deployment prefix: {}'.format(
+        model_version, DEPLOYMENT_PREFIX))
+    return model_version
+
+
+def create_git_pr(s3_client, hyper_params):  # pragma: no cover
     """Create a git PR automatically if recall_at_30 is higher than previous iteration."""
-    keys = [i.key for i in s3_client.list_bucket_objects()]
-    dates = []
-    for i in keys:
-        if "intermediate-model/hyperparameters.json" in i:
-            dates.append(i.split('/')[0])
-    dates.remove(model_version)
-    previous_version = max(dates)
+    recall_at_30 = hyper_params['recall_at_30']
+    previous_version = get_deployed_model_version()
     k = '{prev_ver}/intermediate-model/hyperparameters.json'.format(prev_ver=previous_version)
     prev_hyperparams = s3_client.read_json_file(k)
 
     # Convert the json description to string
-    description = 'Previous hyper parameters :: ' + json.dumps(prev_hyperparams).replace('"', '\\"')
+    description = 'Previous model details:\n' \
+                  '    Model version :: {}\n' \
+                  '    Hyper parameters :: {}\n\n' \
+                  'New model details:\n' \
+                  '    Model version :: {}\n' \
+                  '    Hyper parameters :: {}\n\n' \
+                  'Criteria for promotion was "current_recall_at_30 >= prev_recall_at_30".'.format(
+                      previous_version, json.dumps(prev_hyperparams).replace('"', '\\"'),
+                      MODEL_VERSION, json.dumps(hyper_params).replace('"', '\\"'))
 
     prev_recall = prev_hyperparams.get('recall_at_30', 0.55)
     _logger.info('create_git_pr:: Prev => Model {}, Recall {}  Curr => Model {}, Recall {}'.format(
-        previous_version, prev_recall, model_version, recall_at_30))
+        previous_version, prev_recall, MODEL_VERSION, recall_at_30))
     if recall_at_30 >= prev_recall:
         try:
             # 1. Get the bash script from rudra to raise PR
@@ -340,13 +389,13 @@ def create_git_pr(s3_client, model_version, recall_at_30):  # pragma: no cover
 
             # 3. Invoke bash script to create a saas-analytics PR
             exec_command(['./github_helper.sh', 'f8a-pypi-insights.yaml', 'MODEL_VERSION',
-                          str(model_version), description], 60)
+                          str(MODEL_VERSION), description], 60)
         except Exception as e:
             _logger.error('ERROR - execute command raise exception')
             raise e
     else:
         _logger.warn('Ignoring latest model {} as its recall {} is less than existing model {} '
-                     'recall {}'.format(model_version, recall_at_30, previous_version, prev_recall))
+                     'recall {}'.format(MODEL_VERSION, recall_at_30, previous_version, prev_recall))
 
 
 def train_model():
@@ -357,8 +406,8 @@ def train_model():
     lower_limit = int(hyper_params.get('lower_limit', 2))
     upper_limit = int(hyper_params.get('upper_limit', 100))
     latent_factors = int(hyper_params.get('latent_factor', 40))
-    _logger.info("Lower limit {}, Upper limit {} and latent factor {} are used."
-                 .format(lower_limit, upper_limit, latent_factors))
+    _logger.info("Deployment type {} Lower limit {}, Upper limit {} and latent factor {} are used."
+                 .format(DEPLOYMENT_PREFIX, lower_limit, upper_limit, latent_factors))
     package_id_dict, id_package_dict, manifest_id_dict = \
         preprocess_raw_data(data.get('package_dict', {}), lower_limit, upper_limit)
     user_input_stacks = data.get('package_dict', {}).\
@@ -373,11 +422,13 @@ def train_model():
     precision_at_50, recall_at_50 = precision_recall_at_m(50, testing_df, trained_recommender,
                                                           user_item_df)
     try:
-        save_obj(s3_obj, trained_recommender, precision_at_30, recall_at_30,
-                 format_pkg_id_dict, id_package_dict, format_mnf_id_dict,
-                 precision_at_50, recall_at_50, lower_limit, upper_limit, latent_factors)
+        hyper_params = build_hyperparams(lower_limit, upper_limit, latent_factors,
+                                         precision_at_30, recall_at_30,
+                                         precision_at_50, recall_at_50)
+        save_obj(s3_obj, trained_recommender, hyper_params,
+                 format_pkg_id_dict, id_package_dict, format_mnf_id_dict)
         if GITHUB_TOKEN:
-            create_git_pr(s3_client=s3_obj, model_version=MODEL_VERSION, recall_at_30=recall_at_30)
+            create_git_pr(s3_client=s3_obj, hyper_params=hyper_params)
         else:
             _logger.info('GITHUB_TOKEN is missing, cannot raise SAAS PR')
     except Exception as error:
