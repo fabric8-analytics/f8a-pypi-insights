@@ -114,8 +114,8 @@ class TestTraining:
         model_version = get_deployed_model_version(yaml_data, 'dev')
         assert model_version == ''
 
-        model_version = get_deployed_model_version(yaml_data, 'stage')
+        model_version = get_deployed_model_version(yaml_data, 'STAGE')
         assert model_version == '2020-10-30'
 
-        model_version = get_deployed_model_version(yaml_data, 'prod')
+        model_version = get_deployed_model_version(yaml_data, 'PROD')
         assert model_version == '2020-06-12'
