@@ -94,19 +94,19 @@ class TestTraining:
 
     def test_build_hyper_params(self):
         """Test build hyper params."""
-        output = build_hyperparams(2, 100, 40, 0.025, 0.65, 0.032, 0.77)
+        output = build_hyperparams(2, 100, 40, 0.025, 0.65, 0.011, 0.77)
         assert output == {
             "deployment": '',
-            "model_version": '',
+            "model_version": '2019-01-03',
             "minimum_length_of_manifest": 2,
             "maximum_length_of_manifest": 100,
             "latent_factor": 40,
             "precision_at_30": 0.025,
             "recall_at_30": 0.65,
-            "f1_score_at_30": 0.048148148,
+            "f1_score_at_30": 0.04814814814814815,
             "precision_at_50": 0.011,
             "recall_at_50": 0.77,
-            "f1_score_at_50": 0.021690141
+            "f1_score_at_50": 0.06144638403990025
         }
 
     def test_get_deployed_model_version(self):

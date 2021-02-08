@@ -342,7 +342,7 @@ def get_deployment_yaml():
 def get_deployed_model_version(yaml_data, deployment_prefix):
     """Read deployment yaml and return the deployed model verison."""
     # 1. Convert yaml to dict
-    yaml_dict = yaml.load(yaml_data, Loader=yaml.FullLoader)
+    yaml_dict = yaml.load(yaml_data)
 
     # 2. Read model version data for given deploment.
     model_version = ''
