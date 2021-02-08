@@ -31,7 +31,7 @@ import logging
 import subprocess
 from src.config.path_constants import (PACKAGE_TO_ID_MAP, ID_TO_PACKAGE_MAP,
                                        MANIFEST_TO_ID_MAP, MANIFEST_PATH, HPF_MODEL_PATH, ECOSYSTEM,
-                                       HYPERPARAMETERS_PATH, MODEL_VERSION)
+                                       HYPERPARAMETERS_PATH, MODEL_VERSION, DEPLOYMENT_PREFIX)
 from src.config.cloud_constants import (AWS_S3_BUCKET_NAME,
                                         AWS_S3_SECRET_KEY_ID, AWS_S3_ACCESS_KEY_ID, GITHUB_TOKEN)
 
@@ -357,8 +357,8 @@ def train_model():
     lower_limit = int(hyper_params.get('lower_limit', 2))
     upper_limit = int(hyper_params.get('upper_limit', 100))
     latent_factors = int(hyper_params.get('latent_factor', 40))
-    _logger.info("Lower limit {}, Upper limit {} and latent factor {} are used."
-                 .format(lower_limit, upper_limit, latent_factors))
+    _logger.info("Deployment type {} Lower limit {}, Upper limit {} and latent factor {} are used."
+                 .format(DEPLOYMENT_PREFIX, lower_limit, upper_limit, latent_factors))
     package_id_dict, id_package_dict, manifest_id_dict = \
         preprocess_raw_data(data.get('package_dict', {}), lower_limit, upper_limit)
     user_input_stacks = data.get('package_dict', {}).\

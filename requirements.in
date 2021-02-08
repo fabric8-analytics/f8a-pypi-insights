@@ -5,3 +5,4 @@ gevent
 gunicorn
 codecov
 raven[flask]
+pyyaml
