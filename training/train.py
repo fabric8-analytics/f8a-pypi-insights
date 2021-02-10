@@ -370,12 +370,12 @@ def create_git_pr(s3_client, hyper_params):  # pragma: no cover
     prev_hyperparams = s3_client.read_json_file(k)
 
     # Convert the json description to string
-    description = 'Previous model details:\n' \
-                  '    Model version :: {}\n' \
-                  '    Hyper parameters :: {}\n\n' \
-                  'New model details:\n' \
-                  '    Model version :: {}\n' \
-                  '    Hyper parameters :: {}\n\n' \
+    description = 'Previous model details:\\n' \
+                  '    Model version :: {}\\n' \
+                  '    Hyper parameters :: {}\\n\\n' \
+                  'New model details:\\n' \
+                  '    Model version :: {}\\n' \
+                  '    Hyper parameters :: {}\\n\\n' \
                   'Criteria for promotion was [current_recall_at_30 >= prev_recall_at_30].'.format(
                       previous_version,
                       json.dumps(prev_hyperparams, indent=4, sort_keys=True).replace('"', '\\"'),
@@ -398,8 +398,8 @@ def create_git_pr(s3_client, hyper_params):  # pragma: no cover
             exec_command(['chmod', '+x', './github_helper.sh'], 30)
 
             # 3. Invoke bash script to create a saas-analytics PR
-            exec_command(['./github_helper.sh', 'f8a-pypi-insights.yaml', 'MODEL_VERSION',
-                          str(MODEL_VERSION), description], 60)
+            exec_command(['./github_helper.sh', '"f8a-pypi-insights.yaml"', 'MODEL_VERSION',
+                          str(MODEL_VERSION), '"' + description + '"'], 60)
         except Exception as e:
             _logger.error('ERROR - execute command raise exception')
             raise e
