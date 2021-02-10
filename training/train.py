@@ -370,12 +370,12 @@ def create_git_pr(s3_client, hyper_params):  # pragma: no cover
     prev_hyperparams = s3_client.read_json_file(k)
 
     # Convert the json description to string
-    description = 'Previous model details:\n' \
-                  '    Model version :: {}\n' \
-                  '    Hyper parameters :: {}\n\n' \
-                  'New model details:\n' \
-                  '    Model version :: {}\n' \
-                  '    Hyper parameters :: {}\n\n' \
+    description = 'Previous model details:\\n' \
+                  '    Model version :: {}\\n' \
+                  '    Hyper parameters :: {}\\n\\n' \
+                  'New model details:\\n' \
+                  '    Model version :: {}\\n' \
+                  '    Hyper parameters :: {}\\n\\n' \
                   'Criteria for promotion was [current_recall_at_30 >= prev_recall_at_30].'.format(
                       previous_version,
                       json.dumps(prev_hyperparams, indent=4, sort_keys=True),
