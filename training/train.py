@@ -378,9 +378,10 @@ def create_git_pr(s3_client, hyper_params):  # pragma: no cover
                   '    Hyper parameters :: {}\\n\\n' \
                   'Criteria for promotion was [current_recall_at_30 >= prev_recall_at_30].'.format(
                       previous_version,
-                      json.dumps(prev_hyperparams, indent=4, sort_keys=True).replace('"', '\\"'),
+                      json.dumps(prev_hyperparams, indent=4, sort_keys=True),
                       MODEL_VERSION,
-                      json.dumps(hyper_params, indent=4, sort_keys=True).replace('"', '\\"'))
+                      json.dumps(hyper_params, indent=4, sort_keys=True))
+    description = description.replace('"', '\\"').replace('\n', '\\n')
 
     recall_at_30 = hyper_params['recall_at_30']
     prev_recall = prev_hyperparams.get('recall_at_30', 0.55)
