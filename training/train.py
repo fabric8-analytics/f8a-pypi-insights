@@ -390,16 +390,16 @@ def create_git_pr(s3_client, hyper_params):  # pragma: no cover
     if recall_at_30 >= prev_recall:
         try:
             # 1. Get the bash script from rudra to raise PR
-            exec_command(['wget', '-v',
-                          'https://raw.githubusercontent.com/fabric8-analytics/'
-                          'fabric8-analytics-rudra/master/rudra/utils/github_helper.sh',
-                          '-O', './github_helper.sh'], 60)
+            exec_command(["wget", "-v",
+                          "https://raw.githubusercontent.com/fabric8-analytics/"
+                          "fabric8-analytics-rudra/master/rudra/utils/github_helper.sh",
+                          "-O", "./github_helper.sh"], 60)
 
             # 2. Provide execute permission to the script.
-            exec_command(['chmod', '+x', './github_helper.sh'], 30)
+            exec_command(["chmod", "+x", "./github_helper.sh"], 30)
 
             # 3. Invoke bash script to create a saas-analytics PR
-            exec_command(['./github_helper.sh', 'f8a-pypi-insights.yaml', 'MODEL_VERSION',
+            exec_command(["./github_helper.sh", "f8a-pypi-insights.yaml", "MODEL_VERSION",
                           str(MODEL_VERSION), description], 60)
         except Exception as e:
             _logger.error('ERROR - execute command raise exception')
