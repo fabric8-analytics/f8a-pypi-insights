@@ -395,7 +395,7 @@ def create_git_pr(s3_client, hyper_params):  # pragma: no cover
                           "fabric8-analytics-rudra/master/rudra/utils/github_helper.sh",
                           "-O", "./github_helper.sh"], 60)
 
-            # 2. Provide execute permission to the script.
+            # 2. Provide execute permission to the github script.
             exec_command(["chmod", "+x", "./github_helper.sh"], 30)
 
             # 3. Invoke bash script to create a saas-analytics PR
