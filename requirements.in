@@ -6,3 +6,4 @@ gunicorn
 codecov
 raven[flask]
 pyyaml
+pygithub
