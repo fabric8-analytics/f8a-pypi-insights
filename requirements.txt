@@ -50,14 +50,16 @@ python-dateutil==2.7.5
     # via pandas
 pytz==2018.7
     # via pandas
-pyyaml==5.4.1
-    # via -r requirements.in
 raven[flask]==6.10.0
     # via -r requirements.in
 requests==2.25.1
     # via
     #   codecov
     #   pygithub
+ruamel.yaml.clib==0.2.2
+    # via ruamel.yaml
+ruamel.yaml==0.16.12
+    # via -r requirements.in
 six==1.11.0
     # via python-dateutil
 urllib3==1.26.3

@@ -28,7 +28,7 @@ import numpy as np
 import hpfrec
 import json
 import logging
-import yaml
+import ruamel.yaml
 from github import Github
 
 from src.config.path_constants import (PACKAGE_TO_ID_MAP, ID_TO_PACKAGE_MAP,
@@ -42,6 +42,11 @@ _logger = logging.getLogger()
 _logger.setLevel(logging.INFO)
 
 bq_validator = BQValidation()
+
+UPSTREAM_REPO_NAME = 'openshiftio'
+FORK_REPO_NAME = 'fabric8-analytics'
+PROJECT_NAME = 'saas-analytics'
+YAML_FILE_PATH = 'bay-services/f8a-pypi-insights.yaml'
 
 DEPLOYMENT_PREFIX_ENVIRONMENT_NAME_MAP = {
     'STAGE': 'staging',
@@ -304,12 +309,8 @@ def build_hyperparams(lower_limit, upper_limit, latent_factor,
     }
 
 
-def get_deployed_model_version(yaml_data, deployment_prefix):
+def get_deployed_model_version(yaml_dict, deployment_prefix):
     """Read deployment yaml and return the deployed model verison."""
-    # 1. Convert yaml to dict
-    yaml_dict = yaml.load(yaml_data)
-
-    # 2. Read model version data for given deploment.
     model_version = ''
     environment_name = DEPLOYMENT_PREFIX_ENVIRONMENT_NAME_MAP.get(deployment_prefix, '')
     if environment_name:
@@ -326,37 +327,22 @@ def get_deployed_model_version(yaml_data, deployment_prefix):
     return model_version
 
 
-def update_yaml_data(yaml_data, deployment_prefix, model_version, description):
+def update_yaml_data(yaml_dict, deployment_prefix, model_version, hyper_params):
     """Update the yaml file for given deployment with model data and description as comments."""
     environment_name = DEPLOYMENT_PREFIX_ENVIRONMENT_NAME_MAP.get(deployment_prefix, '')
-    found_deployment = False
-    model_version_replaced = False
-    skip_old_comments = False
     if environment_name:
-        new_yaml_data = ''
-        for line in yaml_data.split('\n'):
-            if found_deployment and not model_version_replaced:
-                skip_old_comments = (line[0] == '#')
-
-                # Comment section is just before 'parameters'
-                if 'parameters:' in line:
-                    for d in description.split('\n'):
-                        new_yaml_data += '# ' + d + '\n'
-
-                if 'MODEL_VERSION:' in line:
-                    line = line.split(': ')[0] + ': "' + model_version + '"'
-                    model_version_replaced = True
-                    skip_old_comments = False
-            else:
-                if '- name: ' + environment_name in line:
-                    found_deployment = True
-
-            if not skip_old_comments:
-                new_yaml_data += line + '\n'
+        model_version_replaced = False
+        environments = yaml_dict.get('services', [{}])[0].get('environments', [])
+        for index, env in enumerate(environments):
+            if env.get('name', '') == environment_name:
+                yaml_dict['services'][0]['environments'][index]['comments'] = hyper_params
+                yaml_dict['services'][0]['environments'][index]['parameters']['MODEL_VERSION'] = \
+                    model_version
+                model_version_replaced = True
+                break
 
         if model_version_replaced:
-            # Remove extra '\n' on the last line and return the data.
-            return new_yaml_data[:-1]
+            return ruamel.yaml.dump(yaml_dict, Dumper=ruamel.yaml.RoundTripDumper)
         else:
             raise Exception(f'Could not find a valid model section in the yaml file for '
                             f'"{environment_name}" MODEL_VERSION: {model_version}')
@@ -370,79 +356,87 @@ def build_hyper_params_message(hyper_params):
     return '- Hyper parameters :: {}\n'.format(json.dumps(hyper_params, indent=4, sort_keys=True))
 
 
-def format_description(description):
-    """Format description string to replace decorators."""
-    return description.replace('"', '').replace('{', '').replace('}', '').replace(',', '')
+def format_body(body):
+    """Format PR body string to replace decorators."""
+    return body.replace('"', '').replace('{', '').replace('}', '').replace(',', '')
+
+
+def read_deployed_data(upstream_repo, s3_client):
+    """Read deployed data like yaml file, hyper params, model version."""
+    upstream_latest_commit_hash = upstream_repo.get_commits()[0].sha
+    _logger.info('Upstream latest commit hash: %s', upstream_latest_commit_hash)
+
+    contents = upstream_repo.get_contents(YAML_FILE_PATH, ref=upstream_latest_commit_hash)
+    yaml_dict = ruamel.yaml.load(contents.decoded_content.decode('utf8'),
+                                 ruamel.yaml.RoundTripLoader)
+
+    deployed_version = get_deployed_model_version(yaml_dict, DEPLOYMENT_PREFIX)
+    deployed_file_path = f'{deployed_version}/intermediate-model/hyperparameters.json'
+    deployed_hyperparams = s3_client.read_json_file(deployed_file_path)
+
+    return deployed_version, deployed_hyperparams, yaml_dict
+
+
+def create_branch_and_update_yaml(yaml_dict, hyper_params, deployed_version):
+    """Create branch and update yaml content on fork repo."""
+    # Update yaml model version for the given deployment
+    new_yaml_data = update_yaml_data(yaml_dict, DEPLOYMENT_PREFIX, MODEL_VERSION, hyper_params)
+    _logger.info('Modified yaml data, new length: %d', len(new_yaml_data))
+
+    # Connect to fabric8 analytic repo & get latest commit hash
+    f8a_repo = Github(GITHUB_TOKEN).get_repo(f'{FORK_REPO_NAME}/{PROJECT_NAME}')
+    f8a_latest_commit_hash = f8a_repo.get_commits()[0].sha
+    _logger.info('f8a latest commit hash: %s', f8a_latest_commit_hash)
+
+    # Create a new branch on f8a repo
+    deployment_name = DEPLOYMENT_PREFIX_ENVIRONMENT_NAME_MAP.get(DEPLOYMENT_PREFIX, 'NA')
+    branch_name = f'bump_f8a-pypi-insights_for_{deployment_name}_to_{MODEL_VERSION}'
+    branch = f8a_repo.create_git_ref(f'refs/heads/{branch_name}', f8a_latest_commit_hash)
+    _logger.info('Created new branch [%s]', branch)
+
+    # Update the yaml content in branch on f8a repo
+    commit_message = f'Bump up f8a-pypi-insights for {deployment_name} from ' \
+                     f'{deployed_version} to {MODEL_VERSION}'
+    f8a_repo_contents = f8a_repo.get_contents(YAML_FILE_PATH, ref=f8a_latest_commit_hash)
+    update = f8a_repo.update_file(YAML_FILE_PATH, commit_message, new_yaml_data,
+                                  f8a_repo_contents.sha, branch=f'refs/heads/{branch_name}')
+    _logger.info('New yaml content hash %s', update['commit'].sha)
+
+    return branch_name, commit_message
 
 
 def create_git_pr(s3_client, hyper_params):  # pragma: no cover
     """Create a git PR automatically if recall_at_30 is higher than previous iteration."""
-    yaml_file_path = 'bay-services/f8a-pypi-insights.yaml'
-
-    upstream_repo = Github(GITHUB_TOKEN).get_repo('openshiftio/saas-analytics')
-
-    upstream_latest_commit_hash = upstream_repo.get_commits()[0].sha
-    _logger.info('Upstream latest commit hash: %s', upstream_latest_commit_hash)
-
-    contents = upstream_repo.get_contents(yaml_file_path, ref=upstream_latest_commit_hash)
-    yaml_sha, yaml_data = contents.sha, contents.decoded_content.decode('utf8')
-
-    prev_version = get_deployed_model_version(yaml_data, DEPLOYMENT_PREFIX)
-    k = '{prev_ver}/intermediate-model/hyperparameters.json'.format(prev_ver=prev_version)
-    prev_hyperparams = s3_client.read_json_file(k)
+    upstream_repo = Github(GITHUB_TOKEN).get_repo(f'{UPSTREAM_REPO_NAME}/{PROJECT_NAME}')
+    deployed_version, deployed_hyperparams, yaml_dict = read_deployed_data(upstream_repo,
+                                                                           s3_client)
 
     recall_at_30 = hyper_params['recall_at_30']
-    prev_recall = prev_hyperparams.get('recall_at_30', 0.55)
-    _logger.info('create_git_pr:: Prev => Model %s, Recall %f Curr => Model %s, Recall %f',
-        prev_version, prev_recall, MODEL_VERSION, recall_at_30)
-    if recall_at_30 >= prev_recall:
-        promotion_creteria = 'Criteria for promotion is ' \
-                             '`current_recall_at_30 >= prev_recall_at_30`\n'
+    deployed_recall_at_30 = deployed_hyperparams.get('recall_at_30', 0.55)
+    _logger.info('create_git_pr:: Deployed => Model %s, Recall %f Current => Model %s, Recall %f',
+                 deployed_version, deployed_recall_at_30, MODEL_VERSION, recall_at_30)
+    if recall_at_30 >= deployed_recall_at_30:
+        promotion_creteria = 'current_recall_at_30 >= deployed_recall_at_30'
+
+        params = hyper_params.copy()
+        params.update({'promotion_criteria': str(promotion_creteria)})
+        branch_name, commit_message = create_branch_and_update_yaml(yaml_dict, params,
+                                                                    deployed_version)
 
         hyper_params_formated = build_hyper_params_message(hyper_params)
-        prev_hyper_params_formated = build_hyper_params_message(prev_hyperparams)
-
-        yaml_comments = f'** THIS COMMENT BLOCK IS GENERATED AND REPLACED BY AN AUTOMATED ' \
-                        f'SCRIPT; DO NOT UPDATE IT MANUALLY **\n\n{hyper_params_formated}' \
-                        f'{promotion_creteria}'
-
-        # 1. Update yaml model version for the given deployment
-        new_yaml_data = update_yaml_data(yaml_data, DEPLOYMENT_PREFIX,
-                                         MODEL_VERSION, format_description(yaml_comments))
-        _logger.info('Modified yaml data, new length: %d', len(new_yaml_data))
-
-        # 2. Connect to fabric8 analytic repo & get latest commit hash
-        f8a_repo = Github(GITHUB_TOKEN).get_repo('fabric8-analytics/saas-analytics')
-
-        f8a_latest_commit_hash = f8a_repo.get_commits()[0].sha
-        _logger.info('f8a latest commit hash: %s', f8a_latest_commit_hash)
-
-        # 3. Create a new branch on f8a repo
-        deployment_name = DEPLOYMENT_PREFIX_ENVIRONMENT_NAME_MAP.get(DEPLOYMENT_PREFIX, 'NA')
-        branch_name = f'bump_f8a-pypi-insights_for_{deployment_name}_to_{MODEL_VERSION}'
-        branch = f8a_repo.create_git_ref(f'refs/heads/{branch_name}', f8a_latest_commit_hash)
-        _logger.info('Created new branch [%s]', branch)
-
-        # 4. Update the yaml content in branch on f8a repo
-        commit_message = f'Bump up f8a-pypi-insights for {deployment_name} from ' \
-                         f'{prev_version} to {MODEL_VERSION}'
-        update = f8a_repo.update_file(yaml_file_path, commit_message, new_yaml_data,
-                                        yaml_sha, branch=f'refs/heads/{branch_name}')
-        _logger.info('New yaml content hash %s', update['commit'].sha)
-
-        # 5. Raise PR using upstream repo
-        description = f'Current deployed model details:\n- Model version :: `{prev_version}`\n' \
-                      f'{prev_hyper_params_formated}New model details:\n' \
-                      f'- Model version :: `{MODEL_VERSION}`\n' \
-                      f'{hyper_params_formated}{promotion_creteria}'
-        pr = upstream_repo.create_pull(title=commit_message, body=format_description(description),
-                                       head=f'fabric8-analytics:{branch_name}',
-                                       base='refs/heads/master')
+        prev_hyper_params_formated = build_hyper_params_message(deployed_hyperparams)
+        body = f'Current deployed model details:\n- Model version :: `{deployed_version}`\n' \
+               f'{prev_hyper_params_formated}New model details:\n' \
+               f'- Model version :: `{MODEL_VERSION}`\n' \
+               f'{hyper_params_formated}Criteria for promotion is `{promotion_creteria}`\n'
+        pr = upstream_repo.create_pull(title=commit_message, body=format_body(body),
+                                       head=f'{FORK_REPO_NAME}:{branch_name}',
+                                       base='refs/heads/main')
         _logger.info('Raised SAAS %s for review', pr)
     else:
         _logger.warn('Ignoring latest model %s as its recall %f is less than '
                      'existing model %s recall %f', MODEL_VERSION, recall_at_30,
-                     prev_version, prev_recall)
+                     deployed_version, deployed_recall_at_30)
 
 
 def train_model():

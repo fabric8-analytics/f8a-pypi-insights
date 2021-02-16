@@ -5,5 +5,5 @@ gevent
 gunicorn
 codecov
 raven[flask]
-pyyaml
+ruamel.yaml
 pygithub
