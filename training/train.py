@@ -48,11 +48,6 @@ FORK_REPO_NAME = 'fabric8-analytics'
 PROJECT_NAME = 'saas-analytics'
 YAML_FILE_PATH = 'bay-services/f8a-pypi-insights.yaml'
 
-DEPLOYMENT_PREFIX_ENVIRONMENT_NAME_MAP = {
-    'STAGE': 'staging',
-    'PROD': 'production'
-}
-
 
 def load_s3():  # pragma: no cover
     """Create connection s3."""
@@ -292,10 +287,10 @@ def save_obj(s3_client, trained_recommender, hyper_params,
 
 
 def build_hyperparams(lower_limit, upper_limit, latent_factor,
-                      precision_30, recall_30, precision_50, recall_50):
+                      precision_30, recall_30, precision_50, recall_50, deployment_type):
     """Build hyper parameter object."""
     return {
-        "deployment": DEPLOYMENT_PREFIX_ENVIRONMENT_NAME_MAP.get(DEPLOYMENT_PREFIX, ''),
+        "deployment": deployment_type,
         "model_version": MODEL_VERSION,
         "minimum_length_of_manifest": lower_limit,
         "maximum_length_of_manifest": upper_limit,
@@ -309,51 +304,38 @@ def build_hyperparams(lower_limit, upper_limit, latent_factor,
     }
 
 
-def get_deployed_model_version(yaml_dict, deployment_prefix):
+def get_deployed_model_version(yaml_dict, deployment_type):
     """Read deployment yaml and return the deployed model verison."""
-    model_version = ''
-    environment_name = DEPLOYMENT_PREFIX_ENVIRONMENT_NAME_MAP.get(deployment_prefix, '')
-    if environment_name:
-        environments = yaml_dict.get('services', [{}])[0].get('environments', [])
-        for env in environments:
-            if env.get('name', '') == environment_name:
-                model_version = env.get('parameters', {}).get('MODEL_VERSION', '')
-                break
-    else:
-        raise Exception(f'Invalid deployment prefix: "{deployment_prefix}", supported '
-                        f'values: {list(DEPLOYMENT_PREFIX_ENVIRONMENT_NAME_MAP.keys())}')
+    model_version = None
+    environments = yaml_dict.get('services', [{}])[0].get('environments', [])
+    for env in environments:
+        if env.get('name', '') == deployment_type:
+            model_version = env.get('parameters', {}).get('MODEL_VERSION', '')
+            break
 
-    _logger.info('Model version: %s for deployment prefix: %s', model_version, deployment_prefix)
+    if model_version is None:
+        raise Exception(f'Model version could not be found for deployment {deployment_type}')
+
+    _logger.info('Model version: %s for deployment: %s', model_version, deployment_type)
     return model_version
 
 
-def update_yaml_data(yaml_dict, deployment_prefix, model_version, hyper_params):
+def update_yaml_data(yaml_dict, deployment_type, model_version, hyper_params):
     """Update the yaml file for given deployment with model data and description as comments."""
-    environment_name = DEPLOYMENT_PREFIX_ENVIRONMENT_NAME_MAP.get(deployment_prefix, '')
-    if environment_name:
-        model_version_replaced = False
-        environments = yaml_dict.get('services', [{}])[0].get('environments', [])
-        for index, env in enumerate(environments):
-            if env.get('name', '') == environment_name:
-                yaml_dict['services'][0]['environments'][index]['comments'] = hyper_params
-                yaml_dict['services'][0]['environments'][index]['parameters']['MODEL_VERSION'] = \
-                    model_version
-                model_version_replaced = True
-                break
+    environments = yaml_dict.get('services', [{}])[0].get('environments', [])
+    for index, env in enumerate(environments):
+        if env.get('name', '') == deployment_type:
+            yaml_dict['services'][0]['environments'][index]['comments'] = hyper_params
+            yaml_dict['services'][0]['environments'][index]['parameters']['MODEL_VERSION'] = \
+                model_version
+            break
 
-        if model_version_replaced:
-            return ruamel.yaml.dump(yaml_dict, Dumper=ruamel.yaml.RoundTripDumper)
-        else:
-            raise Exception(f'Could not find a valid model section in the yaml file for '
-                            f'"{environment_name}" MODEL_VERSION: {model_version}')
-    else:
-        raise Exception(f'Invalid deployment prefix: "{deployment_prefix}", supported '
-                        f'values: {list(DEPLOYMENT_PREFIX_ENVIRONMENT_NAME_MAP.keys())}')
+    return ruamel.yaml.dump(yaml_dict, Dumper=ruamel.yaml.RoundTripDumper)
 
 
 def build_hyper_params_message(hyper_params):
     """Build hyper params data string used for PR description and in yaml comments."""
-    return '- Hyper parameters :: {}\n'.format(json.dumps(hyper_params, indent=4, sort_keys=True))
+    return '- Hyper parameters :: {}'.format(json.dumps(hyper_params, indent=4, sort_keys=True))
 
 
 def format_body(body):
@@ -361,7 +343,7 @@ def format_body(body):
     return body.replace('"', '').replace('{', '').replace('}', '').replace(',', '')
 
 
-def read_deployed_data(upstream_repo, s3_client):
+def read_deployed_data(upstream_repo, s3_client, deployment_type):
     """Read deployed data like yaml file, hyper params, model version."""
     upstream_latest_commit_hash = upstream_repo.get_commits()[0].sha
     _logger.info('Upstream latest commit hash: %s', upstream_latest_commit_hash)
@@ -370,17 +352,17 @@ def read_deployed_data(upstream_repo, s3_client):
     yaml_dict = ruamel.yaml.load(contents.decoded_content.decode('utf8'),
                                  ruamel.yaml.RoundTripLoader)
 
-    deployed_version = get_deployed_model_version(yaml_dict, DEPLOYMENT_PREFIX)
+    deployed_version = get_deployed_model_version(yaml_dict, deployment_type)
     deployed_file_path = f'{deployed_version}/intermediate-model/hyperparameters.json'
     deployed_hyperparams = s3_client.read_json_file(deployed_file_path)
 
     return deployed_version, deployed_hyperparams, yaml_dict
 
 
-def create_branch_and_update_yaml(yaml_dict, hyper_params, deployed_version):
+def create_branch_and_update_yaml(yaml_dict, hyper_params, deployed_version, deployment_type):
     """Create branch and update yaml content on fork repo."""
     # Update yaml model version for the given deployment
-    new_yaml_data = update_yaml_data(yaml_dict, DEPLOYMENT_PREFIX, MODEL_VERSION, hyper_params)
+    new_yaml_data = update_yaml_data(yaml_dict, deployment_type, MODEL_VERSION, hyper_params)
     _logger.info('Modified yaml data, new length: %d', len(new_yaml_data))
 
     # Connect to fabric8 analytic repo & get latest commit hash
@@ -389,13 +371,12 @@ def create_branch_and_update_yaml(yaml_dict, hyper_params, deployed_version):
     _logger.info('f8a latest commit hash: %s', f8a_latest_commit_hash)
 
     # Create a new branch on f8a repo
-    deployment_name = DEPLOYMENT_PREFIX_ENVIRONMENT_NAME_MAP.get(DEPLOYMENT_PREFIX, 'NA')
-    branch_name = f'bump_f8a-pypi-insights_for_{deployment_name}_to_{MODEL_VERSION}'
+    branch_name = f'bump_f8a-pypi-insights_for_{deployment_type}_to_{MODEL_VERSION}'
     branch = f8a_repo.create_git_ref(f'refs/heads/{branch_name}', f8a_latest_commit_hash)
     _logger.info('Created new branch [%s]', branch)
 
     # Update the yaml content in branch on f8a repo
-    commit_message = f'Bump up f8a-pypi-insights for {deployment_name} from ' \
+    commit_message = f'Bump up f8a-pypi-insights for {deployment_type} from ' \
                      f'{deployed_version} to {MODEL_VERSION}'
     f8a_repo_contents = f8a_repo.get_contents(YAML_FILE_PATH, ref=f8a_latest_commit_hash)
     update = f8a_repo.update_file(YAML_FILE_PATH, commit_message, new_yaml_data,
@@ -405,11 +386,11 @@ def create_branch_and_update_yaml(yaml_dict, hyper_params, deployed_version):
     return branch_name, commit_message
 
 
-def create_git_pr(s3_client, hyper_params):  # pragma: no cover
+def create_git_pr(s3_client, hyper_params, deployment_type):  # pragma: no cover
     """Create a git PR automatically if recall_at_30 is higher than previous iteration."""
     upstream_repo = Github(GITHUB_TOKEN).get_repo(f'{UPSTREAM_REPO_NAME}/{PROJECT_NAME}')
-    deployed_version, deployed_hyperparams, yaml_dict = read_deployed_data(upstream_repo,
-                                                                           s3_client)
+    deployed_version, deployed_hyperparams, yaml_dict = read_deployed_data(
+        upstream_repo, s3_client, deployment_type)
 
     recall_at_30 = hyper_params['recall_at_30']
     deployed_recall_at_30 = deployed_hyperparams.get('recall_at_30', 0.55)
@@ -420,15 +401,21 @@ def create_git_pr(s3_client, hyper_params):  # pragma: no cover
 
         params = hyper_params.copy()
         params.update({'promotion_criteria': str(promotion_creteria)})
-        branch_name, commit_message = create_branch_and_update_yaml(yaml_dict, params,
-                                                                    deployed_version)
+        branch_name, commit_message = create_branch_and_update_yaml(
+            yaml_dict, params, deployed_version, deployment_type)
 
         hyper_params_formated = build_hyper_params_message(hyper_params)
         prev_hyper_params_formated = build_hyper_params_message(deployed_hyperparams)
-        body = f'Current deployed model details:\n- Model version :: `{deployed_version}`\n' \
-               f'{prev_hyper_params_formated}New model details:\n' \
-               f'- Model version :: `{MODEL_VERSION}`\n' \
-               f'{hyper_params_formated}Criteria for promotion is `{promotion_creteria}`\n'
+        body = f'''Current deployed model details:
+- Model version :: `{deployed_version}`
+{prev_hyper_params_formated}
+
+New model details:
+- Model version :: `{MODEL_VERSION}`
+{hyper_params_formated}
+
+Criteria for promotion is `{promotion_creteria}`
+'''
         pr = upstream_repo.create_pull(title=commit_message, body=format_body(body),
                                        head=f'{FORK_REPO_NAME}:{branch_name}',
                                        base='refs/heads/main')
@@ -441,6 +428,14 @@ def create_git_pr(s3_client, hyper_params):  # pragma: no cover
 
 def train_model():
     """Training model."""
+    deployment_prefix_to_type_map = {
+        'STAGE': 'staging',
+        'PROD': 'production'
+    }
+
+    deployment_type = deployment_prefix_to_type_map.get(DEPLOYMENT_PREFIX, None)
+    assert deployment_type is not None, f'Invalid DEPLOYMENT_PREFIX: {DEPLOYMENT_PREFIX}'
+
     s3_obj = load_s3()
     data = load_data(s3_obj)
     hyper_params = load_hyper_params() or {}
@@ -465,11 +460,11 @@ def train_model():
     try:
         hyper_params = build_hyperparams(lower_limit, upper_limit, latent_factors,
                                          precision_at_30, recall_at_30,
-                                         precision_at_50, recall_at_50)
+                                         precision_at_50, recall_at_50, deployment_type)
         save_obj(s3_obj, trained_recommender, hyper_params,
                  format_pkg_id_dict, id_package_dict, format_mnf_id_dict)
         if GITHUB_TOKEN:
-            create_git_pr(s3_client=s3_obj, hyper_params=hyper_params)
+            create_git_pr(s3_obj, hyper_params, deployment_type)
         else:
             _logger.info('GITHUB_TOKEN is missing, cannot raise SAAS PR')
     except Exception as error:
