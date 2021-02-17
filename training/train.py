@@ -361,15 +361,15 @@ def read_deployed_data(upstream_repo, s3_client, deployment_type):
         'hyperparams': deployed_hyperparams
     }
     yaml_data = {
-        'commit_hash': upstream_latest_commit_hash,
         'content_sha': contents.sha,
         'dict': yaml_dict
     }
 
-    return deployed_data, yaml_data
+    return deployed_data, yaml_data, upstream_latest_commit_hash
 
 
-def create_branch_and_update_yaml(deployment_type, deployed_data, yaml_data, hyper_params):
+def create_branch_and_update_yaml(deployment_type, deployed_data, yaml_data,
+                                  hyper_params, latest_commit_hash):
     """Create branch and update yaml content on fork repo."""
     # Update yaml model version for the given deployment
     new_yaml_data = update_yaml_data(yaml_data['dict'], deployment_type,
@@ -382,8 +382,8 @@ def create_branch_and_update_yaml(deployment_type, deployed_data, yaml_data, hyp
 
     # Create a new branch on f8a repo
     branch_name = f'bump_f8a-pypi-insights_for_{deployment_type}_to_{MODEL_VERSION}'
-    branch = f8a_repo.create_git_ref(f'refs/heads/{branch_name}', yaml_data['commit_hash'])
-    _logger.info('Created new branch [%s] at [%s]', branch, yaml_data['commit_hash'])
+    branch = f8a_repo.create_git_ref(f'refs/heads/{branch_name}', latest_commit_hash)
+    _logger.info('Created new branch [%s] at [%s]', branch, latest_commit_hash)
 
     # Update the yaml content in branch on f8a repo
     commit_message = f'Bump up f8a-pypi-insights for {deployment_type} from ' \
@@ -398,7 +398,8 @@ def create_branch_and_update_yaml(deployment_type, deployed_data, yaml_data, hyp
 def create_git_pr(s3_client, hyper_params, deployment_type):  # pragma: no cover
     """Create a git PR automatically if recall_at_30 is higher than previous iteration."""
     upstream_repo = Github(GITHUB_TOKEN).get_repo(f'{UPSTREAM_REPO_NAME}/{PROJECT_NAME}')
-    deployed_data, yaml_data = read_deployed_data(upstream_repo, s3_client, deployment_type)
+    deployed_data, yaml_data, latest_commit_hash = read_deployed_data(upstream_repo, s3_client,
+                                                                      deployment_type)
 
     recall_at_30 = hyper_params['recall_at_30']
     deployed_recall_at_30 = deployed_data['hyperparams'].get('recall_at_30', 0.55)
@@ -410,7 +411,8 @@ def create_git_pr(s3_client, hyper_params, deployment_type):  # pragma: no cover
         params = hyper_params.copy()
         params.update({'promotion_criteria': str(promotion_creteria)})
         branch_name, commit_message = create_branch_and_update_yaml(deployment_type, deployed_data,
-                                                                    yaml_data, params)
+                                                                    yaml_data, params,
+                                                                    latest_commit_hash)
 
         hyper_params_formated = build_hyper_params_message(hyper_params)
         prev_hyper_params_formated = build_hyper_params_message(deployed_data['hyperparams'])
