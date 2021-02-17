@@ -44,7 +44,7 @@ _logger.setLevel(logging.INFO)
 bq_validator = BQValidation()
 
 UPSTREAM_REPO_NAME = 'openshiftio'
-FORK_REPO_NAME = 'fabric8-analytics'
+FORK_REPO_NAME = 'developer-analytics-bot'
 PROJECT_NAME = 'saas-analytics'
 YAML_FILE_PATH = 'bay-services/f8a-pypi-insights.yaml'
 
@@ -356,31 +356,40 @@ def read_deployed_data(upstream_repo, s3_client, deployment_type):
     deployed_file_path = f'{deployed_version}/intermediate-model/hyperparameters.json'
     deployed_hyperparams = s3_client.read_json_file(deployed_file_path)
 
-    return deployed_version, deployed_hyperparams, yaml_dict
+    deployed_data = {
+        'version': deployed_version,
+        'hyperparams': deployed_hyperparams
+    }
+    yaml_data = {
+        'commit_hash': upstream_latest_commit_hash,
+        'content_sha': contents.sha,
+        'dict': yaml_dict
+    }
+
+    return deployed_data, yaml_data
 
 
-def create_branch_and_update_yaml(yaml_dict, hyper_params, deployed_version, deployment_type):
+def create_branch_and_update_yaml(deployment_type, deployed_data, yaml_data, hyper_params):
     """Create branch and update yaml content on fork repo."""
     # Update yaml model version for the given deployment
-    new_yaml_data = update_yaml_data(yaml_dict, deployment_type, MODEL_VERSION, hyper_params)
+    new_yaml_data = update_yaml_data(yaml_data['dict'], deployment_type,
+                                     MODEL_VERSION, hyper_params)
     _logger.info('Modified yaml data, new length: %d', len(new_yaml_data))
 
     # Connect to fabric8 analytic repo & get latest commit hash
     f8a_repo = Github(GITHUB_TOKEN).get_repo(f'{FORK_REPO_NAME}/{PROJECT_NAME}')
-    f8a_latest_commit_hash = f8a_repo.get_commits()[0].sha
-    _logger.info('f8a latest commit hash: %s', f8a_latest_commit_hash)
+    _logger.info('f8a fork repo: %s', f8a_repo)
 
     # Create a new branch on f8a repo
     branch_name = f'bump_f8a-pypi-insights_for_{deployment_type}_to_{MODEL_VERSION}'
-    branch = f8a_repo.create_git_ref(f'refs/heads/{branch_name}', f8a_latest_commit_hash)
-    _logger.info('Created new branch [%s]', branch)
+    branch = f8a_repo.create_git_ref(f'refs/heads/{branch_name}', yaml_data['commit_hash'])
+    _logger.info('Created new branch [%s] at [%s]', branch, yaml_data['commit_hash'])
 
     # Update the yaml content in branch on f8a repo
     commit_message = f'Bump up f8a-pypi-insights for {deployment_type} from ' \
-                     f'{deployed_version} to {MODEL_VERSION}'
-    f8a_repo_contents = f8a_repo.get_contents(YAML_FILE_PATH, ref=f8a_latest_commit_hash)
+                     f'{deployed_data["version"]} to {MODEL_VERSION}'
     update = f8a_repo.update_file(YAML_FILE_PATH, commit_message, new_yaml_data,
-                                  f8a_repo_contents.sha, branch=f'refs/heads/{branch_name}')
+                                  yaml_data['content_sha'], branch=f'refs/heads/{branch_name}')
     _logger.info('New yaml content hash %s', update['commit'].sha)
 
     return branch_name, commit_message
@@ -389,25 +398,24 @@ def create_branch_and_update_yaml(yaml_dict, hyper_params, deployed_version, dep
 def create_git_pr(s3_client, hyper_params, deployment_type):  # pragma: no cover
     """Create a git PR automatically if recall_at_30 is higher than previous iteration."""
     upstream_repo = Github(GITHUB_TOKEN).get_repo(f'{UPSTREAM_REPO_NAME}/{PROJECT_NAME}')
-    deployed_version, deployed_hyperparams, yaml_dict = read_deployed_data(
-        upstream_repo, s3_client, deployment_type)
+    deployed_data, yaml_data = read_deployed_data(upstream_repo, s3_client, deployment_type)
 
     recall_at_30 = hyper_params['recall_at_30']
-    deployed_recall_at_30 = deployed_hyperparams.get('recall_at_30', 0.55)
+    deployed_recall_at_30 = deployed_data['hyperparams'].get('recall_at_30', 0.55)
     _logger.info('create_git_pr:: Deployed => Model %s, Recall %f Current => Model %s, Recall %f',
-                 deployed_version, deployed_recall_at_30, MODEL_VERSION, recall_at_30)
+                 deployed_data['version'], deployed_recall_at_30, MODEL_VERSION, recall_at_30)
     if recall_at_30 >= deployed_recall_at_30:
         promotion_creteria = 'current_recall_at_30 >= deployed_recall_at_30'
 
         params = hyper_params.copy()
         params.update({'promotion_criteria': str(promotion_creteria)})
-        branch_name, commit_message = create_branch_and_update_yaml(
-            yaml_dict, params, deployed_version, deployment_type)
+        branch_name, commit_message = create_branch_and_update_yaml(deployment_type, deployed_data,
+                                                                    yaml_data, params)
 
         hyper_params_formated = build_hyper_params_message(hyper_params)
-        prev_hyper_params_formated = build_hyper_params_message(deployed_hyperparams)
+        prev_hyper_params_formated = build_hyper_params_message(deployed_data['hyperparams'])
         body = f'''Current deployed model details:
-- Model version :: `{deployed_version}`
+- Model version :: `{deployed_data['version']}`
 {prev_hyper_params_formated}
 
 New model details:
@@ -423,7 +431,7 @@ Criteria for promotion is `{promotion_creteria}`
     else:
         _logger.warn('Ignoring latest model %s as its recall %f is less than '
                      'existing model %s recall %f', MODEL_VERSION, recall_at_30,
-                     deployed_version, deployed_recall_at_30)
+                     deployed_data['version'], deployed_recall_at_30)
 
 
 def train_model():
