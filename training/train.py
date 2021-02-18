@@ -323,7 +323,7 @@ def get_deployed_model_version(yaml_dict, deployment_type):
 def update_yaml_data(yaml_dict, deployment_type, model_version, hyper_params):
     """Update the yaml file for given deployment with model data and description as comments."""
     environments = yaml_dict.get('services', [{}])[0].get('environments', [])
-    hyper_params = { k: str(v) for k, v in hyper_params.items()}
+    hyper_params = {k: str(v) for k, v in hyper_params.items()}
     for index, env in enumerate(environments):
         if env.get('name', '') == deployment_type:
             yaml_dict['services'][0]['environments'][index]['comments'] = hyper_params
