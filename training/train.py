@@ -429,7 +429,7 @@ Criteria for promotion is `{promotion_creteria}`
 '''
         pr = upstream_repo.create_pull(title=commit_message, body=format_body(body),
                                        head=f'{FORK_REPO_NAME}:{branch_name}',
-                                       base='refs/heads/main')
+                                       base='refs/heads/master')
         _logger.info('Raised SAAS %s for review', pr)
     else:
         _logger.warn('Ignoring latest model %s as its recall %f is less than '
