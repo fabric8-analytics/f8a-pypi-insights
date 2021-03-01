@@ -444,7 +444,7 @@ def train_model():
         'PROD': 'production'
     }
 
-    deployment_type = deployment_prefix_to_type_map.get(DEPLOYMENT_PREFIX, None)
+    deployment_type = deployment_prefix_to_type_map.get(DEPLOYMENT_PREFIX.upper(), None)
     assert deployment_type is not None, f'Invalid DEPLOYMENT_PREFIX: {DEPLOYMENT_PREFIX}'
 
     s3_obj = load_s3()
