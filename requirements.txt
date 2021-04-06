@@ -56,13 +56,11 @@ requests==2.25.1
     # via
     #   codecov
     #   pygithub
-ruamel.yaml.clib==0.2.2
-    # via ruamel.yaml
 ruamel.yaml==0.16.12
     # via -r requirements.in
 six==1.11.0
     # via python-dateutil
-urllib3==1.26.3
+urllib3==1.26.4
     # via requests
 werkzeug==0.16.0
     # via flask
