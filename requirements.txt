@@ -62,7 +62,7 @@ ruamel.yaml==0.16.12
     # via -r requirements.in
 six==1.11.0
     # via python-dateutil
-urllib3==1.26.3
+urllib3==1.26.4
     # via requests
 werkzeug==0.16.0
     # via flask

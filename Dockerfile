@@ -1,23 +1,24 @@
-FROM registry.centos.org/centos/centos:7
+FROM registry.access.redhat.com/ubi8/python-36:latest
 
-RUN yum install -y epel-release &&\
-    yum install -y gcc-c++ git python36-pip python36-requests httpd httpd-devel python36-devel &&\
-    yum clean all
+LABEL name="f8analytics pypi insights service" \
+      description="Fabric8 analytic python insights service for recommendation." \
+      email-ids="dhpatel@redhat.com" \
+      git-url="https://github.com/fabric8-analytics/f8a-pypi-insights" \
+      git-path="/" \
+      target-file="Dockerfile" \
+      app-license="GPL-3.0"
 
-COPY ./requirements.txt /requirements.txt
+ENV LANG=en_US.UTF-8 PYTHONDONTWRITEBYTECODE=1
 
-RUN pip3 install --upgrade pip
+RUN pip3 install --upgrade --no-cache-dir pip
 
-RUN pip3 install git+https://github.com/fabric8-analytics/fabric8-analytics-rudra#egg=rudra
+COPY ./requirements.txt /opt/app-root
 
-RUN pip3 install -r requirements.txt
+RUN pip3 install --no-cache-dir git+https://github.com/fabric8-analytics/fabric8-analytics-rudra#egg=rudra
+RUN pip3 install --no-cache-dir -r /opt/app-root/requirements.txt
+RUN pip3 install --no-cache-dir Cython==0.29.1 && pip3 install --no-cache-dir hpfrec==0.2.2.9
 
-RUN pip3 install Cython==0.29.1 && pip3 install hpfrec==0.2.2.9
+COPY ./src /opt/app-root/src/src
+ADD ./entrypoint.sh /bin/entrypoint.sh
 
-COPY ./entrypoint.sh /bin/entrypoint.sh
-
-COPY ./src /src
-
-RUN chmod +x /bin/entrypoint.sh
-
-ENTRYPOINT ["/bin/entrypoint.sh"]
+ENTRYPOINT ["bash", "/bin/entrypoint.sh"]
