@@ -42,9 +42,18 @@ class MockHPFScoring(mock.Mock):
         return id_pkg, input_stack.difference(id_pkg)
 
 
+class MockAmazonS3(mock.Mock):
+    """Mock AWS S3 class."""
+
+    def connect(self):
+        """Mock connect method."""
+        pass
+
+
 @pytest.fixture(scope='module')
 @mock.patch('src.models.predict_model.HPFScoring', new_callable=MockHPFScoring)
-def api_client(_request):
+@mock.patch('rudra.data_store.aws.AmazonS3', new_callable=MockAmazonS3)
+def api_client(_request, _awss3):
     """Create an api client instance."""
     from src.recommendation_service import app
     client = app.test_client()
