@@ -41,11 +41,11 @@ function prepare_venv() {
         exit 1
     fi
     printf "%sPython virtual environment initialized%s\n" "${YELLOW}" "${NORMAL}"
-    pip3 install -U pip
-    pip3 install git+https://github.com/fabric8-analytics/fabric8-analytics-rudra#egg=rudra
-    pip3 install -r tests/requirements.txt
+    pip3 install --upgrade pip
+    pip3 install -r requirements.txt
     pip3 install Cython==0.29.1
     pip3 install hpfrec==0.2.2.9
+    pip3 install -r tests/requirements.txt
 }
 
 [ "$NOVENV" == "1" ] || prepare_venv || exit 1
