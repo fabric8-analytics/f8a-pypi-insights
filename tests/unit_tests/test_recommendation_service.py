@@ -42,9 +42,18 @@ class MockHPFScoring(mock.Mock):
         return id_pkg, input_stack.difference(id_pkg)
 
 
+class MockAmazonS3(mock.Mock):
+    """Mock AWS S3 class."""
+
+    def connect(self):
+        """Mock connect method."""
+        pass
+
+
 @pytest.fixture(scope='module')
 @mock.patch('src.models.predict_model.HPFScoring', new_callable=MockHPFScoring)
-def api_client(_request):
+@mock.patch('rudra.data_store.aws.AmazonS3', new_callable=MockAmazonS3)
+def api_client(_request, _awss3):
     """Create an api client instance."""
     from src.recommendation_service import app
     client = app.test_client()
@@ -59,16 +68,14 @@ class TestRecommendationService:
         resp = api_client.get('/api/v1/liveness')
         assert resp is not None
         assert resp.status_code == 200
-        assert resp.json is not None
-        assert resp.json == {}
+        assert json.loads(resp.data.decode('UTF-8')) == {}
 
     def test_readiness(self, api_client):
         """Test Readiness endpoint."""
         resp = api_client.get('/api/v1/readiness')
         assert resp is not None
         assert resp.status_code == 200
-        assert resp.json is not None
-        assert resp.json["status"] == "ready"
+        assert json.loads(resp.data.decode('UTF-8')) == {"status": "ready"}
 
     def test_companion_recommendation_with_known_stack(self, api_client):
         """Test companion recommendation endpoint with proper stack."""
@@ -79,9 +86,9 @@ class TestRecommendationService:
                                headers=headers)
         assert resp is not None
         assert resp.status_code == 200
-        assert resp.json is not None
-        assert len(resp.json) > 0
-        for pkgs in resp.json:
+        json_data = json.loads(resp.data.decode('UTF-8'))
+        assert len(json_data) > 0
+        for pkgs in json_data:
             assert not pkgs['missing_packages']
             assert pkgs['ecosystem'] == 'pypi'
             assert pkgs['companion_packages']
@@ -99,9 +106,9 @@ class TestRecommendationService:
                                headers=headers)
         assert resp is not None
         assert resp.status_code == 200
-        assert resp.json is not None
-        assert len(resp.json) > 0
-        for pkgs in resp.json:
+        json_data = json.loads(resp.data.decode('UTF-8'))
+        assert len(json_data) > 0
+        for pkgs in json_data:
             assert pkgs['ecosystem'] == 'pypi'
             assert len(pkgs['missing_packages']) == 2
             assert 'unknown1' in pkgs['missing_packages']
@@ -117,9 +124,9 @@ class TestRecommendationService:
                                headers=headers)
         assert resp is not None
         assert resp.status_code == 200
-        assert resp.json is not None
-        assert len(resp.json) > 0
-        for pkgs in resp.json:
+        json_data = json.loads(resp.data.decode('UTF-8'))
+        assert len(json_data) > 0
+        for pkgs in json_data:
             assert not pkgs['missing_packages']
             assert pkgs['companion_packages']
             assert pkgs['ecosystem'] == 'pypi'

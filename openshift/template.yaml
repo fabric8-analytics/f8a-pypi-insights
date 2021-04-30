@@ -122,7 +122,7 @@ parameters:
   displayName: Memory limit
   required: true
   name: MEMORY_LIMIT
-  value: "512Mi"
+  value: "700Mi"
 
 - description: Docker registry where the image is
   displayName: Docker registry
@@ -134,7 +134,7 @@ parameters:
   displayName: Docker image
   required: true
   name: DOCKER_IMAGE
-  value: "openshiftio/rhel-fabric8-analytics-f8a-pypi-insights"
+  value: "app-sre/fabric8-analytics-f8a-pypi-insights"
 
 - description: Number of deployment replicas
   displayName: Number of deployment replicas

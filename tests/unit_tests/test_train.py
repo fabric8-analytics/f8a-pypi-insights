@@ -23,6 +23,8 @@ import json
 import pickle
 import mock
 import pandas as pd
+from pathlib import Path
+from ruamel.yaml import YAML
 from fractions import Fraction
 from training.train import preprocess_raw_data, make_user_item_df, format_dict, \
                            train_test_split, build_hyperparams, get_deployed_model_version
@@ -35,8 +37,6 @@ with open('tests/data/package-to-id-dict.json', 'r') as f:
     package_to_id_dict = json.load(f)
 with open('tests/data/user-item-list.json', 'r') as f:
     user_item_list = json.load(f)
-with open('tests/data/f8a-pypi-insights.yaml', 'r') as f:
-    yaml_data = f.read()
 
 
 def mock_validate_manifest_data(x):
@@ -94,9 +94,9 @@ class TestTraining:
 
     def test_build_hyper_params(self):
         """Test build hyper params."""
-        output = build_hyperparams(2, 100, 40, 0.025, 0.65, 0.011, 0.77)
+        output = build_hyperparams(2, 100, 40, 0.025, 0.65, 0.011, 0.77, 'test')
         assert output == {
-            "deployment": '',
+            "deployment": 'test',
             "model_version": '2019-01-03',
             "minimum_length_of_manifest": 2,
             "maximum_length_of_manifest": 100,
@@ -111,11 +111,10 @@ class TestTraining:
 
     def test_get_deployed_model_version(self):
         """Get model version for given deployment."""
-        model_version = get_deployed_model_version(yaml_data, 'dev')
-        assert model_version == ''
+        yaml_dict = YAML(typ='safe').load(Path('tests/data/f8a-pypi-insights.yaml'))
 
-        model_version = get_deployed_model_version(yaml_data, 'STAGE')
+        model_version = get_deployed_model_version(yaml_dict, 'staging')
         assert model_version == '2020-10-30'
 
-        model_version = get_deployed_model_version(yaml_data, 'PROD')
+        model_version = get_deployed_model_version(yaml_dict, 'production')
         assert model_version == '2020-06-12'
