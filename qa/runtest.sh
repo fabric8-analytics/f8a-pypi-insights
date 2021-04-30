@@ -70,6 +70,4 @@ echo "*****************************************"
 PYTHONDONTWRITEBYTECODE=1 python3 "$(which pytest)" --cov=src/ --cov-report=xml --cov-fail-under=$COVERAGE_THRESHOLD -vv tests/unit_tests/
 printf "%stests passed%s\n\n" "${GREEN}" "${NORMAL}"
 
-codecov --token=74b5a608-da00-4b26-aec8-8f7f47489f86
-
 popd > /dev/null
